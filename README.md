@@ -6,7 +6,7 @@
 git clone https://github.com/jaimeleonh/fwemu.git
 ```
 
-### Updates
+### Update (after downloading)
 - Inside fwemu
 ```
 git remote -v
