@@ -16,8 +16,19 @@ git remote -v
 origin	https://github.com/jaimeleonh/fwemu.git (fetch)
 origin	https://github.com/jaimeleonh/fwemu.git (push)
 ```
+or
+- Check that it appears:  
+```
+XXXX	https://github.com/jaimeleonh/fwemu.git (fetch)
+XXXX	https://github.com/jaimeleonh/fwemu.git (push)
+```
+
 
 - If so:
 ```
 git pull origin 
+```
+or 
+```
+git pull XXXX 
 ```
