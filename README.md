@@ -7,6 +7,7 @@ git clone https://github.com/jaimeleonh/fwemu.git
 ```
 
 ### Updates
-(inside fwemu)```
+(inside fwemu)
+```
 git pull origin 
 ```
