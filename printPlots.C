@@ -24,8 +24,8 @@ void printPlots () {
 
  
   std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality"};  
-std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
-  std::vector <std::string> plots = {"h_time", "h_time_whenGoodX","h_BX","h_tanPhi","h_tanPhi_whenGoodX","h_pos"};
+  std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
+  std::vector <std::string> plots = {"h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenGoodX","h_pos"};
   std::vector <std::string> plots2D = {"h_tanPhi2D","h_pos2D","h_time2D"};
   std::map<std::string, TH1*> m_plots;
   std::map<std::string, TH2*> m_plots2;
@@ -33,8 +33,40 @@ std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", 
   char name [128];
  
   for (const auto & category : qualityCategories) {
-      gStyle->SetOptStat(111111);
+      gStyle->SetOptStat(0);
 
+      std::string nameHist1 = "h_BXFW" + category;
+      sprintf(name,"%s",nameHist1.c_str());
+      TH1F * E1 = (TH1F*) data1.Get(name);
+      E1->Scale (1./ (double) E1->GetEntries());
+      
+
+      nameHist1 = "h_BXEmul" + category;
+      sprintf(name,"%s",nameHist1.c_str());
+      TH1F * E2 = (TH1F*) data1.Get(name);
+      E2->Scale (1./ (double) E2->GetEntries());
+      
+      E1->SetMarkerStyle(20);
+      E2->SetMarkerStyle(21);
+
+      E1->SetMarkerColor(2);
+      E2->SetMarkerColor(3);
+      
+      TLegend *leg = new TLegend(0.7,0.7,0.9,0.9);
+      leg->AddEntry(E1,"Firmware");
+      leg->AddEntry(E2,"Emulator");
+
+
+      E1->Draw("");
+      E2->Draw("same");
+      leg->Draw();
+
+      sprintf(name,"newPlots/h_BXEvent%s.png", category.c_str());
+      gPad->SetLogy();
+      gPad->SaveAs(name);
+      
+
+      gStyle->SetOptStat(111111);
       for (auto & plot : plots) {
         std::string nameHisto = plot + category;
         sprintf(name,"%s",nameHisto.c_str());

@@ -90,6 +90,7 @@ TFile *f = new TFile("./primitives.root");
 TTree *ntuple = (TTree*)f->Get("ntuple");
 
 UInt_t nTrigsEm = 0;
+UInt_t eventBX = 0; 
 std::vector<float> *shift = 0;
 std::vector<float> *positionEm= 0;
 std::vector<float> *directionEm= 0;
@@ -102,6 +103,7 @@ std::vector<std::vector<short>> *lateralitiesEm= 0;
 std::vector<std::vector<int>> *wiresEm= 0;
 std::vector<std::vector<int>> *tdcsEm= 0;
 
+ntuple->SetBranchAddress("eventBX",  &eventBX);
 ntuple->SetBranchAddress("numberOfTrigs",  &nTrigsEm);
 ntuple->SetBranchAddress("Quality",&qualityEm);
 ntuple->SetBranchAddress("Position",&positionEm);
@@ -165,7 +167,7 @@ std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", 
 int nbinx = 21;    double xmin = 0.105;
 int nbinTime = 21; double timemin = 10.5;
 int nbinTan = 9;  double tanmin = 0.0225;
-
+int nbinBX = 15; double bxmin = 7.5; 
 
 
 for (auto & category : qualityCategories) {
@@ -179,6 +181,8 @@ for (auto & category : qualityCategories) {
   m_plots["h_tanPhi"+category] = new TH1F (("h_tanPhi" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_tanPhi_whenGoodX"+category] = new TH1F (("h_tanPhi_whenGoodX" + category).c_str(), "TanPhi firmware - TanPhi emulator when goodX; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_pos"+category] = new TH1F (("h_pos" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
+  m_plots["h_BXFW"+category] = new TH1F (("h_BXFW" + category).c_str(), "BX firmware - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
+  m_plots["h_BXEmul"+category] = new TH1F (("h_BXEmul" + category).c_str(), "BX emulator - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
 
 }
 
@@ -193,6 +197,8 @@ for (auto & category : qualityNumbers) {
   m_plots["h_tanPhi"+category] = new TH1F (("h_tanPhi" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_tanPhi_whenGoodX"+category] = new TH1F (("h_tanPhi_whenGoodX" + category).c_str(), "TanPhi firmware - TanPhi emulator when goodX; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_pos"+category] = new TH1F (("h_pos" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
+  m_plots["h_BXFW"+category] = new TH1F (("h_BXFW" + category).c_str(), "BX firmware - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
+  m_plots["h_BXEmul"+category] = new TH1F (("h_BXEmul" + category).c_str(), "BX emulator - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
 }
 
 /**************************************************************************************
@@ -202,7 +208,7 @@ for (auto & category : qualityNumbers) {
 //for (Int_t i = 0; i < 1000; i++){
 for (Int_t i = 0; i < nEntries; i++){
 //cout << "************************************************************************" << endl;  
-//  if (i!= 0) continue;
+//  if (i!= 176) continue;
   ntuple->GetEntry(i);
   ntuple1->GetEntry(i);
 
@@ -257,8 +263,9 @@ for (Int_t i = 0; i < nEntries; i++){
       else if (qualityEm->at(iTrigEm) > qualityFw->at(bestTrigFw)) outCategories.push_back("emulBetterQuality"); 	
       else if (qualityEm->at(iTrigEm) < qualityFw->at(bestTrigFw)) outCategories.push_back("fwBetterQuality"); 
 
-  	if (fabs(positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm)) > 0.5) { cout << i << endl;  
-        cout << positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm) << endl; }
+//  	if (fabs(positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm)) > 0.5) { cout << i << endl;  }
+  	//if (fabs(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm)) > 0.015) { cout << i << endl; }  
+//        cout << positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm) << endl; }
         if (debug) {
 	  cout << "--------------------" << endl;
 	  cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
@@ -277,6 +284,8 @@ for (Int_t i = 0; i < nEntries; i++){
         m_plots2["h_time2D"+outCat]->Fill(bxTimeFw->at(bestTrigFw), bxTimeEm->at(iTrigEm)); 
         m_plots["h_time"+outCat]->Fill(bxTimeFw->at(bestTrigFw) - bxTimeEm->at(iTrigEm)); 
         m_plots["h_BX"+outCat]->Fill(bxTimeFw->at(bestTrigFw) - bxTimeEm->at(iTrigEm)); 
+        m_plots["h_BXFW"+outCat]->Fill(round(bxTimeFw->at(bestTrigFw)/25.)  - eventBX);
+        m_plots["h_BXEmul"+outCat]->Fill(round(bxTimeEm->at(iTrigEm)/25.)  - eventBX); 
         if ( fabs(positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm) ) <= xmin / ((double) nbinx )){
 	  m_plots["h_tanPhi_whenGoodX"+outCat]->Fill(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm));  
 	  m_plots["h_time_whenGoodX"+outCat]->Fill( bxTimeFw->at(bestTrigFw) - bxTimeEm->at(iTrigEm) );  
@@ -301,6 +310,8 @@ for (auto & category : qualityCategories) {
   m_plots["h_time"+category] -> Write();
   m_plots["h_time_whenGoodX"+category] -> Write();
   m_plots["h_BX"+category] -> Write();
+  m_plots["h_BXFW"+category] -> Write();
+  m_plots["h_BXEmul"+category] -> Write();
   m_plots["h_tanPhi"+category] -> Write();
   m_plots["h_tanPhi_whenGoodX"+category] -> Write();
   m_plots["h_pos"+category] -> Write();
@@ -313,6 +324,8 @@ for (auto & category : qualityNumbers) {
   m_plots["h_time"+category] -> Write();
   m_plots["h_time_whenGoodX"+category] -> Write();
   m_plots["h_BX"+category] -> Write();
+  m_plots["h_BXFW"+category] -> Write();
+  m_plots["h_BXEmul"+category] -> Write();
   m_plots["h_tanPhi"+category] -> Write();
   m_plots["h_tanPhi_whenGoodX"+category] -> Write();
   m_plots["h_pos"+category] -> Write();

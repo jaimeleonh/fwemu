@@ -7,6 +7,7 @@ void output_primitives() {
        dir.ReplaceAll("/./","/");
 */
        UInt_t nTrigs = 0;
+       UInt_t eventBX = 0;
        std::vector<float> m_shift;
        std::vector<float> m_position;
        std::vector<float> m_direction;
@@ -33,6 +34,7 @@ void output_primitives() {
        TFile *hfile = new TFile("primitives.root","RECREATE");
        TTree *m_tree = new TTree("ntuple", "Root tree");
        
+       m_tree->Branch("eventBX",  &eventBX);
        m_tree->Branch("numberOfTrigs",  &nTrigs);
        m_tree->Branch("Position",  &m_position);
        m_tree->Branch("Direction",  &m_direction);
@@ -46,6 +48,7 @@ void output_primitives() {
        m_tree->Branch("Cellnumber",  &m_wires);
        m_tree->Branch("tdcTime",  &m_tdcs);
 
+       int BX; 
        float position;
        float shift;
        float direction;
@@ -61,9 +64,9 @@ void output_primitives() {
        std::vector<int> cells;
        std::vector<int> tdcs;
        
-       ifstream output("all3prims.txt");
+       ifstream output("all3prims_fullRes.txt");
        if (output.is_open()){
-         while(output>>quality>> position>>  direction>> time>> shift>> wheel>> sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {
+         while(output>>quality>> position>>  direction>> time>> shift>> wheel>> sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8>>BX) {
          if (quality != -1) {
 	   nTrigs++;
 /*
@@ -135,9 +138,12 @@ void output_primitives() {
            m_lateralities.push_back(lateralities);
            m_wires.push_back(cells);
            m_tdcs.push_back(tdcs);
+	   eventBX = BX; 
+
 	 } else {
 	   m_tree->Fill();
 	   nTrigs=0;
+	   eventBX=0;
 	   m_position.clear();
            m_direction.clear();
            m_time.clear();
