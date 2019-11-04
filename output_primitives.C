@@ -64,7 +64,8 @@ void output_primitives() {
        std::vector<int> cells;
        std::vector<int> tdcs;
        
-       ifstream output("all3prims_fullRes.txt");
+       ifstream output("all3prims.txt");
+       //ifstream output("all3prims_fullRes.txt");
        if (output.is_open()){
          while(output>>quality>> position>>  direction>> time>> shift>> wheel>> sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8>>BX) {
          if (quality != -1) {

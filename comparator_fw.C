@@ -22,6 +22,8 @@
 #include <time.h>
 #include "TLegend.h"
 #include "TEfficiency.h"
+#include <boost/iterator/zip_iterator.hpp>
+#include <boost/range.hpp>
 #ifdef __MAKECINT__
 #pragma link C++ class vector<short>;
 #pragma link C++ class vector<float>;
@@ -37,7 +39,8 @@ using namespace std;
  *
  ***************************************************************************************/
 
-const bool debug = false; 
+//const bool debug = false; 
+const bool debug = true; 
 
 /***************************************************************************************
  *
@@ -68,15 +71,12 @@ int qualityGroup (int quality) {
 
 
 
-/**************************************************************************************
- * 				Declaramos histogramas
-**************************************************************************************/
 
 
 /***************************************************************************************
- *
- *				PROGRAMA PRINCIPAL
- *	
+ *										       *
+ *		*****************PROGRAMA PRINCIPAL*******************		       *
+ *										       *
  * *************************************************************************************/
 
 void comparator_fw(){
@@ -85,6 +85,9 @@ void comparator_fw(){
 
   gStyle->SetOptStat(1111111);
 
+/**************************************************************************************
+ * 			              NTUPLAS
+**************************************************************************************/
 // Cargo la ntupla de las primitivas
 TFile *f = new TFile("./primitives.root");
 TTree *ntuple = (TTree*)f->Get("ntuple");
@@ -164,7 +167,8 @@ std::map<std::string, TH2*> m_plots2;
 std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality"};  
 std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
 
-int nbinx = 21;    double xmin = 0.105;
+//int nbinx = 21;    double xmin = 0.105;
+int nbinx = 11;    double xmin = 0.125;
 int nbinTime = 21; double timemin = 10.5;
 int nbinTan = 9;  double tanmin = 0.0225;
 int nbinBX = 15; double bxmin = 7.5; 
@@ -179,10 +183,12 @@ for (auto & category : qualityCategories) {
   m_plots["h_time_whenGoodX"+category] = new TH1F (("h_time_whenGoodX" + category).c_str(), "BxTime firmware - BxTime emulator when goodX; #Delta BxTime (ns); Entries", nbinTime, -timemin, timemin);
   m_plots["h_BX"+category] = new TH1F (("h_BX" + category).c_str(), "BxTime firmware - BxTime emulator; #Delta BxTime (ns); Entries", 7, -87.5, 87.5);
   m_plots["h_tanPhi"+category] = new TH1F (("h_tanPhi" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
+  m_plots["h_tanPhi_whenSameT0"+category] = new TH1F (("h_tanPhi_whenSameT0" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_tanPhi_whenGoodX"+category] = new TH1F (("h_tanPhi_whenGoodX" + category).c_str(), "TanPhi firmware - TanPhi emulator when goodX; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_pos"+category] = new TH1F (("h_pos" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
-  m_plots["h_BXFW"+category] = new TH1F (("h_BXFW" + category).c_str(), "BX firmware - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
-  m_plots["h_BXEmul"+category] = new TH1F (("h_BXEmul" + category).c_str(), "BX emulator - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
+  m_plots["h_pos_whenSameT0"+category] = new TH1F (("h_pos_whenSameT0" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
+  m_plots["h_BXFW"+category] = new TH1F (("h_BXFW" + category).c_str(), "BX firmware - eventBX;  BX firmware - eventBX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
+  m_plots["h_BXEmul"+category] = new TH1F (("h_BXEmul" + category).c_str(), "BX emulator - eventBX; BX emulator - eventBX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
 
 }
 
@@ -195,11 +201,14 @@ for (auto & category : qualityNumbers) {
   m_plots["h_time_whenGoodX"+category] = new TH1F (("h_time_whenGoodX" + category).c_str(), "BxTime firmware - BxTime emulator when goodX; #Delta BxTime (ns); Entries", nbinTime, -timemin, timemin);
   m_plots["h_BX"+category] = new TH1F (("h_BX" + category).c_str(), "BxTime firmware - BxTime emulator; #Delta BxTime (ns); Entries", 7, -87.5, 87.5);
   m_plots["h_tanPhi"+category] = new TH1F (("h_tanPhi" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
+  m_plots["h_tanPhi_whenSameT0"+category] = new TH1F (("h_tanPhi_whenSameT0" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_tanPhi_whenGoodX"+category] = new TH1F (("h_tanPhi_whenGoodX" + category).c_str(), "TanPhi firmware - TanPhi emulator when goodX; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
   m_plots["h_pos"+category] = new TH1F (("h_pos" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
+  m_plots["h_pos_whenSameT0"+category] = new TH1F (("h_pos_whenSameT0" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
   m_plots["h_BXFW"+category] = new TH1F (("h_BXFW" + category).c_str(), "BX firmware - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
   m_plots["h_BXEmul"+category] = new TH1F (("h_BXEmul" + category).c_str(), "BX emulator - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
 }
+
 
 /**************************************************************************************
  * 					BUCLE
@@ -208,7 +217,7 @@ for (auto & category : qualityNumbers) {
 //for (Int_t i = 0; i < 1000; i++){
 for (Int_t i = 0; i < nEntries; i++){
 //cout << "************************************************************************" << endl;  
-//  if (i!= 176) continue;
+  if (i!= 10) continue;
   ntuple->GetEntry(i);
   ntuple1->GetEntry(i);
 
@@ -244,6 +253,9 @@ for (Int_t i = 0; i < nEntries; i++){
       } // If same chamber
     } // loop over fw
 
+/**************************************************************************************
+ * 			    Select Quality categories
+**************************************************************************************/
     // Filling plots
     std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality"};  
     if (bestTrigFw != -1) {
@@ -264,7 +276,7 @@ for (Int_t i = 0; i < nEntries; i++){
       else if (qualityEm->at(iTrigEm) < qualityFw->at(bestTrigFw)) outCategories.push_back("fwBetterQuality"); 
 
 //  	if (fabs(positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm)) > 0.5) { cout << i << endl;  }
-  	//if (fabs(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm)) > 0.015) { cout << i << endl; }  
+//  	if (fabs(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm)) > 0.015) { cout << i << endl; }  
 //        cout << positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm) << endl; }
         if (debug) {
 	  cout << "--------------------" << endl;
@@ -276,6 +288,9 @@ for (Int_t i = 0; i < nEntries; i++){
 	    cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " Time FW " << bxTimeFw->at(bestTrigFw)                        << endl;
 	    cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsi FW "  << -directionFw->at(bestTrigFw)                     << endl;
 	}
+/**************************************************************************************
+ * 			           Fill Histograms
+**************************************************************************************/
       for (auto & outCat : outCategories) {
         m_plots2["h_tanPhi2D"+outCat]->Fill(-directionFw->at(bestTrigFw), directionEm->at(iTrigEm)); 
         m_plots["h_tanPhi"+outCat]->Fill(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm)); 
@@ -290,6 +305,11 @@ for (Int_t i = 0; i < nEntries; i++){
 	  m_plots["h_tanPhi_whenGoodX"+outCat]->Fill(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm));  
 	  m_plots["h_time_whenGoodX"+outCat]->Fill( bxTimeFw->at(bestTrigFw) - bxTimeEm->at(iTrigEm) );  
         }
+        if (bxTimeFw->at(bestTrigFw) - bxTimeEm->at(iTrigEm) == 0 ){
+	  m_plots["h_tanPhi_whenSameT0"+outCat]->Fill(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm));  
+          m_plots["h_pos_whenSameT0"+outCat]->Fill(positionFw->at(bestTrigFw) + shift->at(iTrigEm) - positionEm->at(iTrigEm));
+	  cout << i << endl;  
+        }
       } 
     } // if filling plots 
 
@@ -301,6 +321,9 @@ for (Int_t i = 0; i < nEntries; i++){
 
 TFile * file = new TFile ("outPlots.root", "RECREATE");
 
+/**************************************************************************************
+ * 			           WRITE HISTOGRAMS
+**************************************************************************************/
 
 for (auto & category : qualityCategories) {
 
@@ -314,7 +337,9 @@ for (auto & category : qualityCategories) {
   m_plots["h_BXEmul"+category] -> Write();
   m_plots["h_tanPhi"+category] -> Write();
   m_plots["h_tanPhi_whenGoodX"+category] -> Write();
+  m_plots["h_tanPhi_whenSameT0"+category] -> Write();
   m_plots["h_pos"+category] -> Write();
+  m_plots["h_pos_whenSameT0"+category] -> Write();
 } 
 for (auto & category : qualityNumbers) {
 
@@ -328,135 +353,12 @@ for (auto & category : qualityNumbers) {
   m_plots["h_BXEmul"+category] -> Write();
   m_plots["h_tanPhi"+category] -> Write();
   m_plots["h_tanPhi_whenGoodX"+category] -> Write();
+  m_plots["h_tanPhi_whenSameT0"+category] -> Write();
   m_plots["h_pos"+category] -> Write();
+  m_plots["h_pos_whenSameT0"+category] -> Write();
 } 
 
 delete file; 
-
-/********************************************* PAINT AND SAVE HISTOS *********************************************************/
-
-
-/*
-TFile *file = new TFile (".//plots/histos.root","RECREATE");
-
-gStyle->SetStatW(0.16);
-gStyle->SetStatH(0.09);
-gStyle->SetStatX(0.9);
-gStyle->SetStatY(0.9);
-
-//TFile *ff = new TFile ("./plots/2016/h_tanphi.root","RECREATE");
-TCanvas *cTanphi = new TCanvas();
-cTanphi->SetCanvasSize(1600, 1000);
-cTanphi->SetWindowSize(1600, 1000);
-h_tanphi->GetXaxis()->SetTitle("TanPhi firmware");
-h_tanphi->GetYaxis()->SetTitle("TanPhi emulator");
-h_tanphi->Draw("colz");
-cTanphi->SaveAs("./plots/h_tanphi.png");
-h_tanphi->Write();
-//delete ff; 
-
-//TFile *ffp = new TFile ("./plots/2016/h_pos.root","RECREATE");
-TCanvas *cPos = new TCanvas();
-cPos->SetCanvasSize(1600, 1000);
-cPos->SetWindowSize(1600, 1000);
-h_pos->GetXaxis()->SetTitle("Position firmware (cm)");
-h_pos->GetYaxis()->SetTitle("Position emulator (cm)");
-h_pos->Draw("colz");
-cPos->SaveAs("./plots/h_pos.png");
-h_pos->Write();
-//delete ffp; 
-
-//TFile *fft = new TFile ("./plots/2016/h_time.root","RECREATE");
-TCanvas *cTime = new TCanvas();
-cTime->SetCanvasSize(1600, 1000);
-cTime->SetWindowSize(1600, 1000);
-h_time->GetXaxis()->SetTitle("BxTime firmware (ns)");
-h_time->GetYaxis()->SetTitle("BxTime emulator (ns)");
-h_time->Draw("colz");
-cTime->SaveAs("./plots/h_time.png");
-h_time->Write();
-//delete fft; 
-
-//TFile *fft25 = new TFile ("./plots/2016/h_time25.root","RECREATE");
-TCanvas *cTime25 = new TCanvas();
-cTime25->SetCanvasSize(1600, 1000);
-cTime25->SetWindowSize(1600, 1000);
-h_time25->GetXaxis()->SetTitle("BxTime firmware (ns)");
-h_time25->GetYaxis()->SetTitle("BxTime emulator (ns)");
-h_time25->Draw("colztext");
-cTime25->SaveAs("./plots/h_time25.png");
-h_time25->Write();
-//delete fft25; 
-
-//TFile *fft1 = new TFile ("./plots/2016/h_t.root","RECREATE");
-TCanvas *cT = new TCanvas();
-cT->SetCanvasSize(1600, 1000);
-cT->SetWindowSize(1600, 1000);
-h_t->GetXaxis()->SetTitle("BxTime firmware - BxTime emulator (ns)");
-h_t->GetYaxis()->SetTitle("Entries/ns");
-h_t->Draw();
-cT->SaveAs("./plots/h_t.png");
-h_t->Write();
-//delete fft1; 
-
-TCanvas *cTP = new TCanvas();
-cTP->SetCanvasSize(1600, 1000);
-cTP->SetWindowSize(1600, 1000);
-h_tP->GetXaxis()->SetTitle("tanPhi firmware - tanPhi emulator");
-h_tP->GetYaxis()->SetTitle("Entries/0.01");
-h_tP->Draw();
-cTP->SaveAs("./plots/h_tP.png");
-h_tP->Write();
-
-TCanvas *cP = new TCanvas();
-cP->SetCanvasSize(1600, 1000);
-cP->SetWindowSize(1600, 1000);
-h_p->GetXaxis()->SetTitle("Position firmware - Position emulator (cm)");
-h_p->GetYaxis()->SetTitle("Entries");
-h_p->Draw();
-cP->SaveAs("./plots/h_p.png");
-h_p->Write();
-
-TCanvas *cq = new TCanvas();
-cq->SetCanvasSize(1600, 1000);
-cq->SetWindowSize(1600, 1000);
-h_qFW->GetXaxis()->SetTitle("Qualities");
-h_qFW->GetYaxis()->SetTitle("Entries");
-h_qFW->Draw();
-cq->SaveAs("./plots/h_qFW.png");
-h_qFW->Write();
-
-TCanvas *cqE = new TCanvas();
-cqE->SetCanvasSize(1600, 1000);
-cqE->SetWindowSize(1600, 1000);
-h_qEmul->GetXaxis()->SetTitle("Qualities");
-h_qEmul->GetYaxis()->SetTitle("Entries");
-h_qEmul->Draw();
-cqE->SaveAs("./plots/h_qEmul.png");
-h_qEmul->Write();
-
-
-
-gStyle->SetOptStat(111100);
-gStyle->SetStatX(0.84);
-gStyle->SetStatY(0.4);
-//TFile *fft2 = new TFile ("./plots/2016/h_time1800.root","RECREATE");
-TCanvas *cTime2 = new TCanvas();
-cTime2->SetCanvasSize(1600, 1000);
-cTime2->SetWindowSize(1600, 1000);
-h_time2000->GetXaxis()->SetTitle("BxTime firmware mod 1800 (ns)");
-h_time2000->GetYaxis()->SetTitle("BxTime emulator mod 1800 (ns)");
-h_time2000->Draw("colztext");
-cTime2->SaveAs("./plots/h_time1800.png");
-h_time2000->Write();
-//delete fft2; 
-
-delete file; 
-
-
-*/
-
-
 
 
 

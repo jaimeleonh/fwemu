@@ -25,13 +25,37 @@ void printPlots () {
  
   std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality"};  
   std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
-  std::vector <std::string> plots = {"h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenGoodX","h_pos"};
+  std::vector <std::string> plots = {"h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenSameT0","h_tanPhi_whenGoodX","h_pos","h_pos_whenSameT0",};
   std::vector <std::string> plots2D = {"h_tanPhi2D","h_pos2D","h_time2D"};
   std::map<std::string, TH1*> m_plots;
   std::map<std::string, TH2*> m_plots2;
 
   char name [128];
  
+
+  for (const auto & category : qualityCategories) {
+      //gStyle->SetOptStat(111111);
+      for (auto & plot : plots) {
+        std::string nameHisto = plot + category;
+        sprintf(name,"%s",nameHisto.c_str());
+        m_plots[name] = (TH1F*) data1.Get(name);
+        m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
+        m_plots[name]->Draw("histo");
+        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+	gPad->SetLogy();
+        gPad->SaveAs(name);
+      }
+      for (auto & plot : plots2D) {
+        std::string nameHisto = plot + category;
+        sprintf(name,"%s",nameHisto.c_str());
+        m_plots2[name] = (TH2F*) data1.Get(name);
+        m_plots2[name]->Draw("colz");
+        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+	gPad->SetLogy(0);
+        gPad->SaveAs(name);
+      }
+      
+  } // chamber
   for (const auto & category : qualityCategories) {
       gStyle->SetOptStat(0);
 
@@ -56,6 +80,8 @@ void printPlots () {
       leg->AddEntry(E1,"Firmware");
       leg->AddEntry(E2,"Emulator");
 
+      E1->SetTitle("BX FW/Emulator - EventBX");
+      E1->GetXaxis()->SetTitle("BX FW/Emulator - EventBX");
 
       E1->Draw("");
       E2->Draw("same");
@@ -64,30 +90,7 @@ void printPlots () {
       sprintf(name,"newPlots/h_BXEvent%s.png", category.c_str());
       gPad->SetLogy();
       gPad->SaveAs(name);
-      
-
-      gStyle->SetOptStat(111111);
-      for (auto & plot : plots) {
-        std::string nameHisto = plot + category;
-        sprintf(name,"%s",nameHisto.c_str());
-        m_plots[name] = (TH1F*) data1.Get(name);
-        m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
-        m_plots[name]->Draw("histo");
-        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
-	gPad->SetLogy();
-        gPad->SaveAs(name);
-      }
-      for (auto & plot : plots2D) {
-        std::string nameHisto = plot + category;
-        sprintf(name,"%s",nameHisto.c_str());
-        m_plots2[name] = (TH2F*) data1.Get(name);
-        m_plots2[name]->Draw("colz");
-        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
-	gPad->SetLogy(0);
-        gPad->SaveAs(name);
-      }
-      
-  } // chamber
+  }
 /*
   for (auto & plot : plots) {
      
