@@ -9,9 +9,10 @@ void output_firmware() {
        UInt_t nTrigs = 0;
 
 
-       std::vector<float> m_position;
-       std::vector<float> m_direction;
+       std::vector<double> m_position;
+       std::vector<double> m_direction;
        std::vector<int> m_time;
+       std::vector<double> m_chi2;
        std::vector<short> m_quality;
        std::vector<short> m_superlayer;
        std::vector<short> m_wheel;
@@ -24,6 +25,7 @@ void output_firmware() {
        m_position.clear();
        m_direction.clear();
        m_time.clear();
+       m_chi2.clear();
        m_quality.clear();
        m_superlayer.clear();
        m_wheel.clear();
@@ -40,6 +42,7 @@ void output_firmware() {
        m_tree->Branch("Position",  &m_position);
        m_tree->Branch("Direction",  &m_direction);
        m_tree->Branch("Time",  &m_time);
+       m_tree->Branch("chi2",  &m_chi2);
        m_tree->Branch("Superlayer",  &m_superlayer);
        m_tree->Branch("Quality",  &m_quality);
        m_tree->Branch("Wheel",  &m_wheel);
@@ -50,9 +53,10 @@ void output_firmware() {
        m_tree->Branch("tdcTime",  &m_tdcs);
 
        int index; 
-       float position;
-       float direction;
+       double position;
+       double direction;
        int time; 
+       double chi2;
        short quality;
        short superlayer;
        short wheel;
@@ -66,9 +70,14 @@ void output_firmware() {
        std::vector<int> tdcs;
        
 
-       ifstream output ("output3h.txt");
+       //ifstream output ("output6h.txt");
+       ifstream output ("output4h_primos.txt");
+       //ifstream output ("output_sl1.txt");
+       //ifstream output ("output_last_new.txt");
+       //ifstream output ("output_newest.txt");
        if (output.is_open()){
-         while(output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {
+       //  while(output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {
+         while(output>>index>>position>>direction>>time>>quality>>chi2>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {
          //while(!output.eof()){
          //output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station;
          if (index != -1) {
@@ -108,6 +117,7 @@ void output_firmware() {
            m_direction.push_back(direction);
            m_time.push_back(time);
            m_quality.push_back(quality);
+           m_chi2.push_back(chi2);
            m_wheel.push_back(wheel);
            m_sector.push_back(sector);
            m_station.push_back(station);
@@ -119,6 +129,7 @@ void output_firmware() {
 	   nTrigs=0;
 	   m_position.clear();
            m_direction.clear();
+           m_chi2.clear();
            m_time.clear();
            m_quality.clear();
            m_wheel.clear();
@@ -136,6 +147,7 @@ void output_firmware() {
        m_direction.clear();
        m_time.clear();
        m_quality.clear();
+       m_chi2.clear();
        m_wheel.clear();
        m_sector.clear();
        m_station.clear();

@@ -14,6 +14,8 @@ void printPlots () {
   gSystem->Exec("mkdir newPlots");
 
   TFile data1(file);
+  TFile outPlots("finalPlots.root","RECREATE");
+
   int a = 0;
 
 
@@ -22,11 +24,11 @@ void printPlots () {
 
  
 
- 
   std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality"};  
   std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
-  std::vector <std::string> plots = {"h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenSameT0","h_tanPhi_whenGoodX","h_pos","h_pos_whenSameT0",};
-  std::vector <std::string> plots2D = {"h_tanPhi2D","h_pos2D","h_time2D"};
+  std::vector <std::string> plots = {"h_chi2","h_sameFit","h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenSameT0","h_tanPhi_whenGoodX","h_pos","h_pos_whenSameT0",};
+  std::vector <std::string> plots2D = {"h_numOfHits","h_tanPhi2D","h_pos2D","h_time2D"};
+  std::vector <std::string> specialPlots = {"h_BX","h_xDist","h_tanPhiDist","h_timeDist"};
   std::map<std::string, TH1*> m_plots;
   std::map<std::string, TH2*> m_plots2;
 
@@ -41,31 +43,49 @@ void printPlots () {
         m_plots[name] = (TH1F*) data1.Get(name);
         m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
         m_plots[name]->Draw("histo");
+	outPlots.cd(); 
+        m_plots[name]->Write();
         sprintf(name,"newPlots/%s.png", nameHisto.c_str());
-	gPad->SetLogy();
+	if (plot == "h_sameFit") gPad->SetLogy(0);
+	else gPad->SetLogy();
         gPad->SaveAs(name);
+	//outPlots.cd(); 
+        //m_plots[name]->Write();
+        //gPad->SetName(name);
+        //gPad->Write();
+        //m_plots[name]->Write();
       }
       for (auto & plot : plots2D) {
         std::string nameHisto = plot + category;
         sprintf(name,"%s",nameHisto.c_str());
         m_plots2[name] = (TH2F*) data1.Get(name);
-        m_plots2[name]->Draw("colz");
+        if (plot == "h_numOfHits") m_plots2[name]->Draw("colztext");
+        else m_plots2[name]->Draw("colz");
+	outPlots.cd(); 
+        m_plots2[name]->Write();
         sprintf(name,"newPlots/%s.png", nameHisto.c_str());
 	gPad->SetLogy(0);
         gPad->SaveAs(name);
+	//outPlots.cd(); 
+        //m_plots2[name]->Write();
+        //gPad->SetName(name);
+        //gPad->Write();
       }
       
   } // chamber
   for (const auto & category : qualityCategories) {
+      for (const auto & plot : specialPlots) {
       gStyle->SetOptStat(0);
 
-      std::string nameHist1 = "h_BXFW" + category;
+      std::string nameHist1 =  plot + "FW" + category;
+      //std::string nameHist1 = "h_BXFW" + category;
       sprintf(name,"%s",nameHist1.c_str());
       TH1F * E1 = (TH1F*) data1.Get(name);
       E1->Scale (1./ (double) E1->GetEntries());
       
 
-      nameHist1 = "h_BXEmul" + category;
+      nameHist1 = plot + "Emul" + category;
+      //nameHist1 = "h_BXEmul" + category;
       sprintf(name,"%s",nameHist1.c_str());
       TH1F * E2 = (TH1F*) data1.Get(name);
       E2->Scale (1./ (double) E2->GetEntries());
@@ -79,17 +99,32 @@ void printPlots () {
       TLegend *leg = new TLegend(0.7,0.7,0.9,0.9);
       leg->AddEntry(E1,"Firmware");
       leg->AddEntry(E2,"Emulator");
-
-      E1->SetTitle("BX FW/Emulator - EventBX");
-      E1->GetXaxis()->SetTitle("BX FW/Emulator - EventBX");
+      
+      if (plot == "h_BX") {
+        E1->SetTitle("BX FW/Emulator - EventBX");
+        E1->GetXaxis()->SetTitle("BX FW/Emulator - EventBX");
+      } else if (plot == "h_tanPsiDist") {
+        E1->SetTitle("TanPsi FW/Emulator");
+        E1->GetXaxis()->SetTitle("TanPsi FW/Emulator");
+      } else if (plot == "h_xDist") {
+        E1->SetTitle("Position FW/Emulator");
+        E1->GetXaxis()->SetTitle("Position FW/Emulator (cm)");
+      } else if (plot == "h_timeDist") {
+        E1->SetTitle("Time FW/Emulator - L1A");
+        E1->GetXaxis()->SetTitle("Time FW/Emulator - L1A");
+      }
 
       E1->Draw("");
       E2->Draw("same");
       leg->Draw();
 
-      sprintf(name,"newPlots/h_BXEvent%s.png", category.c_str());
+      sprintf(name,"newPlots/%sEvent%s.png", plot.c_str(), category.c_str());
       gPad->SetLogy();
       gPad->SaveAs(name);
+	outPlots.cd(); 
+        gPad->SetName(name);
+        gPad->Write();
+    }
   }
 /*
   for (auto & plot : plots) {
@@ -246,7 +281,8 @@ void printPlots () {
         leg->AddEntry(E6,"Q8","fp");
         leg->AddEntry(E7,"Q9","fp");
 
-	E7->GetYaxis()->SetRangeUser(0.0001,30);
+        if (plot == "h_sameFit") E7->GetYaxis()->SetRangeUser(0,1);
+	else E7->GetYaxis()->SetRangeUser(0.0001,30);
 
 
         E7->Draw("bar");
@@ -265,16 +301,20 @@ void printPlots () {
         latex.DrawLatex(0,10,name);
         nameFile = "Q6: "+std::to_string(entriesQ6);
         sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,7,name);
+        latex.DrawLatex(0,6,name);
         nameFile = "4h: "+std::to_string(entries4h);
         sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,5,name);
+        latex.DrawLatex(0,4,name);
         nameFile = "3h: "+std::to_string(entries3h);
         sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,3.5,name);
+        latex.DrawLatex(0,2.5,name);
 
      sprintf(name,"newPlots/%s.png", (plot + "_perQuality").c_str());
-     gPad->SetLogy();
+     if (plot == "h_sameFit") gPad->SetLogy(0);
+     else gPad->SetLogy();
      gPad->SaveAs(name);
+     outPlots.cd(); 
+     gPad->SetName(name);
+     gPad->Write();
   }
 } // end macro
