@@ -8,10 +8,11 @@ void output_primitives() {
 */
        UInt_t nTrigs = 0;
        UInt_t eventBX = 0;
-       std::vector<float> m_shift;
-       std::vector<float> m_position;
-       std::vector<float> m_direction;
-       std::vector<float> m_time;
+       std::vector<double> m_shift;
+       std::vector<double> m_position;
+       std::vector<double> m_direction;
+       std::vector<double> m_time;
+       std::vector<double> m_chi2;
        std::vector<short> m_quality;
        std::vector<short> m_wheel;
        std::vector<short> m_sector;
@@ -23,6 +24,7 @@ void output_primitives() {
        m_position.clear();
        m_direction.clear();
        m_time.clear();
+       m_chi2.clear();
        m_quality.clear();
        m_wheel.clear();
        m_sector.clear();
@@ -38,6 +40,7 @@ void output_primitives() {
        m_tree->Branch("numberOfTrigs",  &nTrigs);
        m_tree->Branch("Position",  &m_position);
        m_tree->Branch("Direction",  &m_direction);
+       m_tree->Branch("chi2",  &m_chi2);
        m_tree->Branch("Time",  &m_time);
        m_tree->Branch("Quality",  &m_quality);
        m_tree->Branch("Shift",  &m_shift);
@@ -49,10 +52,11 @@ void output_primitives() {
        m_tree->Branch("tdcTime",  &m_tdcs);
 
        int BX; 
-       float position;
-       float shift;
-       float direction;
-       float time; 
+       double position;
+       double shift;
+       double direction;
+       double time; 
+       double chi2; 
        short quality;
        short wheel;
        short sector;
@@ -64,10 +68,12 @@ void output_primitives() {
        std::vector<int> cells;
        std::vector<int> tdcs;
        
-       ifstream output("all3prims.txt");
-       //ifstream output("all3prims_fullRes.txt");
+       //ifstream output("all6prims.txt");
+       ifstream output("all4Prims_primos.txt");
+       //ifstream output("sl1Prims.txt");
+       //ifstream output("allPrims_new.txt");
        if (output.is_open()){
-         while(output>>quality>> position>>  direction>> time>> shift>> wheel>> sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8>>BX) {
+         while(output>>quality>> position>>  direction>> time>> chi2>> shift>> wheel>> sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8>>BX) {
          if (quality != -1) {
 	   nTrigs++;
 /*
@@ -131,6 +137,7 @@ void output_primitives() {
            m_position.push_back(position);
 	   m_shift.push_back(shift);
            m_direction.push_back(direction);
+           m_chi2.push_back(chi2);
            m_time.push_back(time);
            m_quality.push_back(quality);
            m_wheel.push_back(wheel);
@@ -148,6 +155,7 @@ void output_primitives() {
 	   m_position.clear();
            m_direction.clear();
            m_time.clear();
+           m_chi2.clear();
            m_shift.clear();
            m_quality.clear();
            m_wheel.clear();
@@ -164,6 +172,7 @@ void output_primitives() {
        m_position.clear();
        m_direction.clear();
        m_time.clear();
+       m_chi2.clear();
        m_shift.clear();
        m_quality.clear();
        m_wheel.clear();
