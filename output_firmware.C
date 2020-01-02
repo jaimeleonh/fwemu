@@ -70,11 +70,11 @@ void output_firmware() {
        std::vector<int> tdcs;
        
 
-       //ifstream output ("output6h.txt");
-       ifstream output ("output4h_primos.txt");
        //ifstream output ("output_sl1.txt");
+       ifstream output ("output_prim_181219.txt");
        //ifstream output ("output_last_new.txt");
-       //ifstream output ("output_newest.txt");
+       //ifstream output ("output_2perBX.txt");
+       //ifstream output ("output_per4.txt");
        if (output.is_open()){
        //  while(output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {
          while(output>>index>>position>>direction>>time>>quality>>chi2>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {

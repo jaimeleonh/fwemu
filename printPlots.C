@@ -28,15 +28,58 @@ void printPlots () {
   std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
   std::vector <std::string> plots = {"h_chi2","h_sameFit","h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenSameT0","h_tanPhi_whenGoodX","h_pos","h_pos_whenSameT0",};
   std::vector <std::string> plots2D = {"h_numOfHits","h_tanPhi2D","h_pos2D","h_time2D"};
+  std::vector <std::string> plotsEff = {"h_EfficiencyVsHits"};
   std::vector <std::string> specialPlots = {"h_BX","h_xDist","h_tanPhiDist","h_timeDist"};
   std::map<std::string, TH1*> m_plots;
   std::map<std::string, TH2*> m_plots2;
+  std::map<std::string, TEfficiency*> m_plotsEff;
 
   char name [128];
- 
+
+
+  std::string nameH = "h_goodEvents";
+  sprintf(name,"%s",nameH.c_str());
+  m_plots[name] = (TH1F*) data1.Get(name);
+  m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
+  m_plots[name]->Draw("histo");
+  outPlots.cd(); 
+  m_plots[name]->Write();
+  sprintf(name,"newPlots/%s.png", nameH.c_str());
+  gPad->SaveAs(name);
+  sprintf(name,"newPlots/%s.pdf", nameH.c_str());
+  gPad->SaveAs(name);
+  
+
+  for (const auto & category : qualityNumbers) {
+    for (auto & plot : plotsEff) {
+        std::string nameHisto = plot + category;
+        sprintf(name,"%s",nameHisto.c_str());
+        m_plotsEff[name] = (TEfficiency*) data1.Get(name);
+        m_plotsEff[name]->Draw();
+	outPlots.cd(); 
+        m_plotsEff[name]->Write();
+        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+        gPad->SaveAs(name);
+        sprintf(name,"newPlots/%s.pdf", nameHisto.c_str());
+        gPad->SaveAs(name);
+    }
+  } 
 
   for (const auto & category : qualityCategories) {
+      
       //gStyle->SetOptStat(111111);
+      for (auto & plot : plotsEff) {
+        std::string nameHisto = plot + category;
+        sprintf(name,"%s",nameHisto.c_str());
+        m_plotsEff[name] = (TEfficiency*) data1.Get(name);
+        m_plotsEff[name]->Draw();
+	outPlots.cd(); 
+        m_plotsEff[name]->Write();
+        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+        gPad->SaveAs(name);
+        sprintf(name,"newPlots/%s.pdf", nameHisto.c_str());
+        gPad->SaveAs(name);
+      }
       for (auto & plot : plots) {
         std::string nameHisto = plot + category;
         sprintf(name,"%s",nameHisto.c_str());
@@ -46,6 +89,10 @@ void printPlots () {
 	outPlots.cd(); 
         m_plots[name]->Write();
         sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+	if (plot == "h_sameFit") gPad->SetLogy(0);
+	else gPad->SetLogy();
+        gPad->SaveAs(name);
+        sprintf(name,"newPlots/%s.pdf", nameHisto.c_str());
 	if (plot == "h_sameFit") gPad->SetLogy(0);
 	else gPad->SetLogy();
         gPad->SaveAs(name);
@@ -63,8 +110,10 @@ void printPlots () {
         else m_plots2[name]->Draw("colz");
 	outPlots.cd(); 
         m_plots2[name]->Write();
-        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
 	gPad->SetLogy(0);
+        sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+        gPad->SaveAs(name);
+        sprintf(name,"newPlots/%s.pdf", nameHisto.c_str());
         gPad->SaveAs(name);
 	//outPlots.cd(); 
         //m_plots2[name]->Write();
@@ -118,8 +167,10 @@ void printPlots () {
       E2->Draw("same");
       leg->Draw();
 
-      sprintf(name,"newPlots/%sEvent%s.png", plot.c_str(), category.c_str());
       gPad->SetLogy();
+      sprintf(name,"newPlots/%sEvent%s.png", plot.c_str(), category.c_str());
+      gPad->SaveAs(name);
+      sprintf(name,"newPlots/%sEvent%s.pdf", plot.c_str(), category.c_str());
       gPad->SaveAs(name);
 	outPlots.cd(); 
         gPad->SetName(name);
@@ -309,9 +360,11 @@ void printPlots () {
         sprintf(name,"%s",nameFile.c_str());
         latex.DrawLatex(0,2.5,name);
 
-     sprintf(name,"newPlots/%s.png", (plot + "_perQuality").c_str());
      if (plot == "h_sameFit") gPad->SetLogy(0);
      else gPad->SetLogy();
+     sprintf(name,"newPlots/%s.png", (plot + "_perQuality").c_str());
+     gPad->SaveAs(name);
+     sprintf(name,"newPlots/%s.pdf", (plot + "_perQuality").c_str());
      gPad->SaveAs(name);
      outPlots.cd(); 
      gPad->SetName(name);
