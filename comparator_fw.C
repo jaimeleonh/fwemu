@@ -45,11 +45,27 @@ const bool debug = false;
 //const bool verLosMalos = false; 
 const bool verLosMalos = true; 
 
+
+const int numberOfHitsTh = 4;
+
 /***************************************************************************************
  *
  *			           SUBPROGRAMAS
  *
  * *************************************************************************************/
+
+struct hit
+{
+  int sl; 
+  int la; 
+  int cell; 
+  int tdc;
+};
+
+void printHits (std::vector <hit> hits) {
+  for (auto & hit : hits) cout << hit.sl << " " << hit.la << " " << hit.cell << " " << hit.tdc << endl;
+}
+
 
 int numFromQuality (int quality){
   if (quality == 1) return 3; 
@@ -175,14 +191,38 @@ ntuple1->SetBranchAddress("Lateralities",&lateralitiesFw);
 ntuple1->SetBranchAddress("Cellnumber",&wiresFw);
 ntuple1->SetBranchAddress("tdcTime",&tdcsFw);
 
+ // Cargo la ntupla del firmware
+TFile *f2 = new TFile("./hits.root");
+TTree *ntuple2 = (TTree*)f2->Get("ntuple");
+
+UInt_t nHits = 0;
+std::vector<int> *hitTdcs=0;
+std::vector<int> *hitLayers=0;
+std::vector<int> *hitCells=0;
+std::vector<short> *hitWheels=0;
+std::vector<short> *hitSectors=0;
+std::vector<short> *hitStations=0;
+std::vector<short> *hitSuperlayers=0;
+
+ntuple2->SetBranchAddress("numberOfHits",&nHits);
+ntuple2->SetBranchAddress("hitTdc",&hitTdcs);
+ntuple2->SetBranchAddress("hitLayer",&hitLayers);
+ntuple2->SetBranchAddress("hitCell",&hitCells);
+ntuple2->SetBranchAddress("hitWheel",&hitWheels);
+ntuple2->SetBranchAddress("hitStation",&hitStations);
+ntuple2->SetBranchAddress("hitSector",&hitSectors);
+ntuple2->SetBranchAddress("hitSuperlayer",&hitSuperlayers);
+
+
 int n1 = ntuple->GetEntries(); 
 int n2 = ntuple1->GetEntries(); 
+int n3 = ntuple2->GetEntries(); 
 
 int nEntries = -1; 
 if (n1 < n2) nEntries = n1; 
 else nEntries = n2;  
 
-cout << "Emulator segments: " << ntuple->GetEntries() << " AB7 outputs " << ntuple1->GetEntries() << endl; 
+cout << "Emulator segments: " << ntuple->GetEntries() << " AB7 outputs " << ntuple1->GetEntries() << " Hit events " << n3 << endl; 
 
 /**************************************************************************************
  * 				Declaramos histogramas
@@ -190,6 +230,7 @@ cout << "Emulator segments: " << ntuple->GetEntries() << " AB7 outputs " << ntup
 
 std::map<std::string, TH1*> m_plots;
 std::map<std::string, TH2*> m_plots2;
+std::map<std::string, TEfficiency*> m_plotsEff;
 
 std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality","Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
 //std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
@@ -209,9 +250,13 @@ int nbinDistTime = 300; double timeDistMin = 150;
 
 //LABELS
 std::vector <std::string> fitLabels = {"Same fit", "Different fit"}; 
+std::vector <std::string> eventLabels = {"Events with same fits", "Events with at least one different fit"}; 
 
 
-
+m_plots["h_goodEvents"] = new TH1F ("h_goodEvents","; ; Entries",2 , -0.5, 1.5);
+for (unsigned int i = 0; i < eventLabels.size(); i++){
+  m_plots["h_goodEvents"]->GetXaxis()->SetBinLabel(i+1, eventLabels.at(i).c_str());
+}
 
 for (auto & category : qualityCategories) {
 
@@ -220,6 +265,9 @@ for (auto & category : qualityCategories) {
   for (unsigned int i = 0; i < fitLabels.size(); i++){
     m_plots["h_sameFit"+category]->GetXaxis()->SetBinLabel(i+1, fitLabels.at(i).c_str());
   }
+
+  m_plotsEff["hEfficiencyVsHits"+category] = new TEfficiency (("h_EfficiencyVsHits" + category).c_str(), ("EfficiencyVsHits " + category + "; Number of hits; ").c_str(),38, 2.5, 40.5);
+  
 
   m_plots2["h_numOfHits"+category] = new TH2F (("h_numOfHits" + category).c_str(), "; Emulator number of Hits; Firmware number of Hits", 8 , 1.5, 9.5, 11 , -1.5, 9.5);
 
@@ -269,14 +317,30 @@ for (auto & category : qualityNumbers) {
  * 					BUCLE
  *************************************************************************************/ 					
 
-//for (Int_t i = 0; i < 1000; i++){
+//for (Int_t i = 0; i < 10; i++){
 for (Int_t i = 0; i < nEntries; i++){
 //cout << "************************************************************************" << endl;  
   //if (i!=96) continue;
-  //if (i!=319) continue;
+  //if (i!=277) continue;
   ntuple->GetEntry(i);
   ntuple1->GetEntry(i);
+  ntuple2->GetEntry(i);
 //  cout << nTrigsEm << endl; 
+
+  short oldStation=-1, oldWheel=-1, oldSector=-1;
+  bool gotSameFit = true;   
+  int numberOfHits = 0; 
+  
+  /*struct hit
+  {
+    int sl; 
+    int la; 
+    int cell; 
+    int tdc;
+  }; */
+  std::vector <hit> hitsInChamber;
+  hitsInChamber.clear();
+
 
   for (std::size_t iTrigEm = 0; iTrigEm < nTrigsEm; iTrigEm++) {
     int bestTrigFw = -1; 
@@ -284,7 +348,40 @@ for (Int_t i = 0; i < nEntries; i++){
     int biggestNumOfHits = 0;    
     int totalNumOfHits = 0;    
     int biggestTrigFw = -1;    
- 
+
+    if (oldStation == -1) { 
+      oldStation =  stationEm->at(iTrigEm);
+      oldWheel =  wheelEm->at(iTrigEm);
+      oldSector =  sectorEm->at(iTrigEm);
+
+      hitsInChamber.clear();
+      for (std::size_t iTrigHits = 0; iTrigHits < nHits; iTrigHits++) { 
+        if (oldStation == hitStations->at(iTrigHits) && oldWheel == hitWheels->at(iTrigHits) && oldSector == hitSectors->at(iTrigHits)   ) {
+          numberOfHits++;
+          hitsInChamber.push_back(hit{hitSuperlayers->at(iTrigHits)-1,hitLayers->at(iTrigHits),hitCells->at(iTrigHits),hitTdcs->at(iTrigHits)});
+        }
+      } 
+    //  cout << numberOfHits << endl; 
+
+    } else if  ( wheelEm->at(iTrigEm) != oldWheel || stationEm->at(iTrigEm) != oldStation || (sectorEm->at(iTrigEm) != oldSector ) ) { 
+      if (gotSameFit)  m_plots["h_goodEvents"]->Fill(0);
+      else m_plots["h_goodEvents"]->Fill(1);
+      gotSameFit = true; 
+      oldStation =  stationEm->at(iTrigEm);
+      oldWheel =  wheelEm->at(iTrigEm);
+      oldSector =  sectorEm->at(iTrigEm);
+      numberOfHits=0;
+      hitsInChamber.clear();
+      for (std::size_t iTrigHits = 0; iTrigHits < nHits; iTrigHits++) { 
+        if (oldStation == hitStations->at(iTrigHits) && oldWheel == hitWheels->at(iTrigHits) && oldSector == hitSectors->at(iTrigHits)   ) { 
+          numberOfHits++;
+          hitsInChamber.push_back(hit{hitSuperlayers->at(iTrigHits)-1,hitLayers->at(iTrigHits),hitCells->at(iTrigHits),hitTdcs->at(iTrigHits)});
+         // cout << "Insert hit " << endl;
+        }
+      }
+    }
+
+    if (numberOfHits > numberOfHitsTh ) continue; 
 
     for (std::size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++) {
       if ( (wheelEm->at(iTrigEm) == wheelFw->at(iTrigFw)) && (stationEm->at(iTrigEm) == stationFw->at(iTrigFw)) && (sectorEm->at(iTrigEm) == sectorFw->at(iTrigFw)) ) {
@@ -342,7 +439,7 @@ for (Int_t i = 0; i < nEntries; i++){
 
         if (debug) {
 	  double myChi2;
-	  if (qualityEm->at(iTrigEm)==6||qualityEm->at(iTrigEm)==8||qualityEm->at(iTrigEm)==9) myChi2 = 4.*chi2Fw->at(bestTrigFw)/(1024.*100);
+	  if (qualityEm->at(iTrigEm)==6||qualityEm->at(iTrigEm)==8||qualityEm->at(iTrigEm)==9) myChi2 = chi2Fw->at(bestTrigFw)/(1024.*100);
 	  else myChi2 = chi2Fw->at(bestTrigFw)/(1024.*100);
 	  cout << "----------"<<i<<"----------" << endl;
 	  cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
@@ -358,9 +455,10 @@ for (Int_t i = 0; i < nEntries; i++){
  * 			           Fill Histograms
 **************************************************************************************/
       for (auto & outCat : outCategories) {
+        m_plotsEff["hEfficiencyVsHits"+outCat] -> Fill(1,numberOfHits);
 
 	double myChi2;
-	if (qualityFw->at(bestTrigFw)==6||qualityFw->at(bestTrigFw)==8||qualityFw->at(bestTrigFw)==9) myChi2 = 4.*chi2Fw->at(bestTrigFw)/(1024.*100);
+	if (qualityFw->at(bestTrigFw)==6||qualityFw->at(bestTrigFw)==8||qualityFw->at(bestTrigFw)==9) myChi2 = chi2Fw->at(bestTrigFw)/(1024.*100);
 	else myChi2 = chi2Fw->at(bestTrigFw)/(1024.*100);
 	//myChi2 = 4*chi2Fw->at(bestTrigFw)/(1024.*100);
         m_plots["h_sameFit"+outCat]->Fill(0);
@@ -373,7 +471,7 @@ for (Int_t i = 0; i < nEntries; i++){
 	//cout << "bxTimeEm " << bxTimeEm->at(iTrigEm) << " EventBX*25 " <<eventBX*25 << " bxTimeEm->at(iTrigEm) - eventBX*25) " << bxTimeEm->at(iTrigEm) - (int)( eventBX*25 ) << endl; 
 
 	m_plots["h_chi2"+outCat] -> Fill ( chi2Em->at(iTrigEm) - myChi2 );
-        if ( fabs ( chi2Em->at(iTrigEm) - myChi2) > 1E-2) cout << chi2Em->at(iTrigEm) << " " << myChi2 << " " << i << endl;
+      //  if ( fabs ( chi2Em->at(iTrigEm) - myChi2) > 1E-2) cout << chi2Em->at(iTrigEm) << " " << myChi2 << " " << i << endl;
 
         m_plots2["h_tanPhi2D"+outCat]->Fill(-directionFw->at(bestTrigFw), directionEm->at(iTrigEm)); 
         m_plots["h_tanPhi"+outCat]->Fill(-directionFw->at(bestTrigFw) - directionEm->at(iTrigEm)); 
@@ -409,6 +507,8 @@ for (Int_t i = 0; i < nEntries; i++){
       //                                                    Haven't found the same fit                                                         //
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+      gotSameFit = false; 
+
       //cout << biggestNumOfHits << endl; 
       std::vector <std::string> outCategories = {"All"};
       if (qualityEm->at(iTrigEm) == 1) outCategories.push_back("Q1");
@@ -419,11 +519,12 @@ for (Int_t i = 0; i < nEntries; i++){
       else if (qualityEm->at(iTrigEm) == 8) outCategories.push_back("Q8");
       else if (qualityEm->at(iTrigEm) == 9) outCategories.push_back("Q9");
       for (auto & outCat : outCategories) {
+        m_plotsEff["hEfficiencyVsHits"+outCat] -> Fill(0,numberOfHits);
         m_plots["h_sameFit"+outCat]->Fill(1);
 	m_plots2["h_numOfHits"+outCat]->Fill(numFromQuality(qualityEm->at(iTrigEm)),biggestNumOfHits);
       }
-        if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits!=0 && verLosMalos) {
-          //if (numFromQuality(qualityFw->at(biggestTrigFw)) != 8) continue; 
+        if (numFromQuality(qualityEm->at(iTrigEm))==3 && biggestNumOfHits!=0 && verLosMalos) {
+        //if (numFromQuality(qualityFw->at(biggestTrigFw)) == 4) continue; 
         //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits==4 &&  && biggestNumOfHits!=0 && verLosMalos) {
         //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
         //if (false == true && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
@@ -438,7 +539,10 @@ for (Int_t i = 0; i < nEntries; i++){
 	    cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " TimeFW " << bxTimeFw->at(biggestTrigFw)                        << endl;
 	    cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsiFW "  << -directionFw->at(biggestTrigFw)                 << endl;
 	    cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << 4.*chi2Fw->at(biggestTrigFw)/(1024.*100)                          << endl;
-	} else if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits==0 && verLosMalos && true==false) {
+      cout << "Hits in this chamber:" << endl;
+      printHits(hitsInChamber);
+	} else if (numFromQuality(qualityEm->at(iTrigEm))==3 && biggestNumOfHits==0 && verLosMalos) {
+	//} else if (numFromQuality(qualityEm->at(iTrigEm))==8 && biggestNumOfHits==0 && verLosMalos && true==false) {
         //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
         //if (false == true && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
         //if (numFromQuality(qualityEm->at(iTrigEm)) == biggestNumOfHits && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
@@ -452,6 +556,8 @@ for (Int_t i = 0; i < nEntries; i++){
 	    cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " TimeFW " << -1                        << endl;
 	    cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsiFW "  << -1                 << endl;
 	    cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << -1                         << endl;
+      cout << "Hits in this chamber:" << endl;
+      printHits(hitsInChamber);
 	}
 //	break;  
     } 
@@ -468,8 +574,11 @@ TFile * file = new TFile ("outPlots.root", "RECREATE");
  * 			           WRITE HISTOGRAMS
 **************************************************************************************/
 
+m_plots["h_goodEvents"] -> Write();
+
 for (auto & category : qualityCategories) {
 
+  m_plotsEff["hEfficiencyVsHits"+category] -> Write();
   m_plots2["h_numOfHits"+category] -> Write();
   m_plots["h_sameFit"+category] -> Write();
   m_plots["h_timeDistFW"+category] -> Write();
