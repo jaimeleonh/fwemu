@@ -10,6 +10,7 @@ void output_hits() {
        std::vector<int> m_tdc;
        std::vector<int> m_layer;
        std::vector<int> m_cellNumber;
+       std::vector<double> m_shift;
        std::vector<short> m_wheel;
        std::vector<short> m_sector;
        std::vector<short> m_station;
@@ -18,6 +19,7 @@ void output_hits() {
        m_tdc.clear();
        m_layer.clear();
        m_cellNumber.clear();
+       m_shift.clear();
        m_wheel.clear();
        m_sector.clear();
        m_station.clear();
@@ -30,6 +32,7 @@ void output_hits() {
        m_tree->Branch("hitTdc",  &m_tdc);
        m_tree->Branch("hitLayer",  &m_layer);
        m_tree->Branch("hitCell",  &m_cellNumber);
+       m_tree->Branch("hitShift",  &m_shift);
        m_tree->Branch("hitWheel",  &m_wheel);
        m_tree->Branch("hitSector",  &m_sector);
        m_tree->Branch("hitStation",  &m_station);
@@ -42,7 +45,7 @@ void output_hits() {
        short sector=0;
        short station=0;
        short superlayer=0;
-       double dum=0.;
+       double shift=0.;
 
  
        //ifstream output("all6prims.txt");
@@ -50,7 +53,7 @@ void output_hits() {
        //ifstream output("sl1Prims.txt");
        //ifstream output("allPrims_new.txt");
        if (output.is_open()){
-         while(output>>wheel>>sector>>station>>dum>>superlayer>>layer>>cellNumber>>tdc) {
+         while(output>>wheel>>sector>>station>>shift>>superlayer>>layer>>cellNumber>>tdc) {
          //while(output>>quality>> position>>  direction>> time>> chi2>> shift>> wheel>> sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8>>BX) {
          if (sector != -1) {
 	   nHits++;
@@ -58,6 +61,7 @@ void output_hits() {
            m_tdc.push_back(tdc);
            m_layer.push_back(layer);
            m_cellNumber.push_back(cellNumber);
+           m_shift.push_back(shift);
            m_wheel.push_back(wheel);
            m_sector.push_back(sector);
            m_station.push_back(station);
@@ -70,6 +74,7 @@ void output_hits() {
            m_layer.clear();
            m_cellNumber.clear();
            m_wheel.clear();
+           m_shift.clear();
            m_sector.clear();
            m_station.clear();
            m_superlayer.clear();
@@ -81,6 +86,7 @@ void output_hits() {
        m_tdc.clear();
        m_layer.clear();
        m_cellNumber.clear();
+       m_shift.clear();
        m_wheel.clear();
        m_sector.clear();
        m_station.clear();

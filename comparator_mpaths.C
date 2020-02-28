@@ -208,17 +208,18 @@ for (auto & category : qualityCategories) {
     m_plots["h_sameFit"+category]->GetXaxis()->SetBinLabel(i+1, fitLabels.at(i).c_str());
   }
 
-  m_plotsEff["hEfficiencyVsHits"+category] = new TEfficiency (("h_EfficiencyVsHits" + category).c_str(), ("Efficiency vs Hits " + category +  "; Number of hits; ").c_str(),38, 2.5, 40.5);
+  m_plotsEff["hMixerEfficiencyVsHits"+category] = new TEfficiency (("h_MixerEfficiencyVsHits" + category).c_str(), ("MixerEfficiency vs Hits " + category +  "; Number of hits; ").c_str(),38, 2.5, 40.5);
  
 }
 
-  m_plotsEff["hEfficiency3hIn4h"] = new TEfficiency ("h_Efficiency3hIn4h", "Efficiency 3hIn4h vs Hits; Number of hits; " ,38, 2.5, 40.5);
+  m_plotsEff["hMixerEfficiency3hIn4h"] = new TEfficiency ("h_MixerEfficiency3hIn4h", "MixerEfficiency 3hIn4h vs Hits; Number of hits; " ,38, 2.5, 40.5);
 
 /**************************************************************************************
  * 					BUCLE
  *************************************************************************************/ 					
 
-//for (Int_t i = 0; i < 1; i++){
+//for (Int_t i = 1; i < 2; i++){
+//for (Int_t i = 9994; i < 9995; i++){
 for (Int_t i = 0; i < nEntries; i++){
 //cout << "************************************************************************" << endl;  
   //if (i!=96) continue;
@@ -308,9 +309,9 @@ for (Int_t i = 0; i < nEntries; i++){
 * 			           Fill Histograms
 **************************************************************************************/
       for (auto & outCat : outCategories) {
-        m_plotsEff["hEfficiencyVsHits"+outCat] -> Fill(1,numberOfHits);
+        m_plotsEff["hMixerEfficiencyVsHits"+outCat] -> Fill(1,numberOfHits);
         m_plots["h_sameFit"+outCat]->Fill(0);
-        if (outCat == "3h") m_plotsEff["hEfficiencyVsHitsAll3h"] -> Fill(1,numberOfHits);
+        if (outCat == "3h") m_plotsEff["hMixerEfficiencyVsHitsAll3h"] -> Fill(1,numberOfHits);
       } 
     } // if bestTrig!= -1
     else { 
@@ -318,14 +319,23 @@ for (Int_t i = 0; i < nEntries; i++){
       //                                                    Haven't found the same fit                                                         //
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       if (mostHitsTrigFw != -1) {
-        m_plotsEff["hEfficiency3hIn4h"] -> Fill(1,numberOfHits);          
-         m_plotsEff["hEfficiencyVsHitsAll3h"] -> Fill(1,numberOfHits);
+        m_plotsEff["hMixerEfficiency3hIn4h"] -> Fill(1,numberOfHits);          
+         m_plotsEff["hMixerEfficiencyVsHitsAll3h"] -> Fill(1,numberOfHits);
       } else {
-        m_plotsEff["hEfficiency3hIn4h"] -> Fill(0,numberOfHits);  
-        m_plotsEff["hEfficiencyVsHitsAll3h"] -> Fill(0,numberOfHits);        
+        m_plotsEff["hMixerEfficiency3hIn4h"] -> Fill(0,numberOfHits);  
+        m_plotsEff["hMixerEfficiencyVsHitsAll3h"] -> Fill(0,numberOfHits);        
       }
       for (auto & outCat : outCategories) {
-        m_plotsEff["hEfficiencyVsHits"+outCat] -> Fill(0,numberOfHits);
+        if (numberOfHits < 5 && verLosMalos) { 
+          cout <<"************** " << i << " **************" << endl; 
+              std::vector <int> wires1 = wiresEm->at(iTrigEm);
+              std::vector <int> tdcs1 = tdcsEm->at(iTrigEm);
+              cout << wires1[0] << " " << tdcs1[0] << endl;
+              cout << wires1[1] << " " << tdcs1[1] << endl;
+              cout << wires1[2] << " " << tdcs1[2] << endl;
+              cout << wires1[3] << " " << tdcs1[3] << endl << endl;
+        }
+        m_plotsEff["hMixerEfficiencyVsHits"+outCat] -> Fill(0,numberOfHits);
         m_plots["h_sameFit"+outCat]->Fill(1);
       }
 	}
@@ -338,18 +348,18 @@ for (Int_t i = 0; i < nEntries; i++){
 
 } // loop over entries
 
-TFile * file = new TFile ("outPlots.root", "RECREATE");
+TFile * file = new TFile ("outPlots_mpaths.root", "RECREATE");
 
 /**************************************************************************************
  * 			           WRITE HISTOGRAMS
 **************************************************************************************/
 
 m_plots["h_goodEvents"] -> Write();
-m_plotsEff["hEfficiency3hIn4h"] -> Write();
+m_plotsEff["hMixerEfficiency3hIn4h"] -> Write();
 
 for (auto & category : qualityCategories) {
 
-  m_plotsEff["hEfficiencyVsHits"+category] -> Write();
+  m_plotsEff["hMixerEfficiencyVsHits"+category] -> Write();
   m_plots["h_sameFit"+category] -> Write();
 }/* 
 for (auto & category : qualityNumbers) {

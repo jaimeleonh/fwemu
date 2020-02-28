@@ -12,6 +12,7 @@ void printPlots () {
 
   TString file = "outPlots.root";
   gSystem->Exec("mkdir newPlots");
+  gSystem->Exec("rm newPlots/*");
 
   TFile data1(file);
   TFile outPlots("finalPlots.root","RECREATE");
@@ -25,7 +26,7 @@ void printPlots () {
  
 
   std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality"};  
-  std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
+  std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9", "3h", "4h"};  
   std::vector <std::string> plots = {"h_chi2","h_sameFit","h_time", "h_time_whenGoodX","h_BX","h_BXFW","h_BXEmul","h_tanPhi","h_tanPhi_whenSameT0","h_tanPhi_whenGoodX","h_pos","h_pos_whenSameT0",};
   std::vector <std::string> plots2D = {"h_numOfHits","h_tanPhi2D","h_pos2D","h_time2D"};
   std::vector <std::string> plotsEff = {"h_EfficiencyVsHits"};
@@ -36,7 +37,7 @@ void printPlots () {
 
   char name [128];
 
-
+  if (a == 0) {
   std::string nameH = "h_goodEvents";
   sprintf(name,"%s",nameH.c_str());
   m_plots[name] = (TH1F*) data1.Get(name);
@@ -48,7 +49,21 @@ void printPlots () {
   gPad->SaveAs(name);
   sprintf(name,"newPlots/%s.pdf", nameH.c_str());
   gPad->SaveAs(name);
-  
+  }
+
+  if (a==0){
+  std::string nameH = "h_hitDistr";
+  sprintf(name,"%s",nameH.c_str());
+  m_plots[name] = (TH1F*) data1.Get(name);
+  m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
+  m_plots[name]->Draw("histo");
+  outPlots.cd(); 
+  m_plots[name]->Write();
+  sprintf(name,"newPlots/%s.png", nameH.c_str());
+  gPad->SaveAs(name);
+  sprintf(name,"newPlots/%s.pdf", nameH.c_str());
+  gPad->SaveAs(name);
+  }
 
   for (const auto & category : qualityNumbers) {
     for (auto & plot : plotsEff) {

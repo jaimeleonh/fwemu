@@ -10,11 +10,11 @@ void printMPaths () {
   gStyle->SetOptStat(111111);
   std::vector<std::string> stuffTags = { "Time", "Pos", "Psi"};
 
-  TString file = "outPlots.root";
+  TString file = "outPlots_mpaths.root";
   gSystem->Exec("mkdir newPlots");
 
   TFile data1(file);
-  TFile outPlots("finalPlots.root","RECREATE");
+  TFile outPlots("finalPlots_mpaths.root","RECREATE");
 
   char name [128];
 
@@ -30,7 +30,7 @@ void printMPaths () {
       gPad->SaveAs(("newPlots/" + name + ".pdf").c_str());
     } else if (std::string(key->GetClassName()) == "TH2F") {
       TH2F * plott = (TH2F*) data1.Get(std::string(key->GetName()).c_str());
-      plott->Draw();
+      plott->Draw("colz");
       std::string name = key->GetName();
       gPad->SaveAs(("newPlots/" + name + ".png").c_str());
       gPad->SaveAs(("newPlots/" + name + ".pdf").c_str());

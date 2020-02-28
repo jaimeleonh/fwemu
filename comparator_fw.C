@@ -45,27 +45,139 @@ const bool debug = false;
 //const bool verLosMalos = false; 
 const bool verLosMalos = true; 
 
+const int hitsToStudy = 3; 
 
-const int numberOfHitsTh = 4;
+const bool printHits = false; 
+//const bool printHits = true; 
+
+
+const int numberOfHitsTh = 12;
+
+
+/**************************************************************************************
+ * 			              NTUPLAS
+**************************************************************************************/
+// Cargo la ntupla de las primitivas
+TFile *f = new TFile("./primitives.root");
+TTree *ntuple = (TTree*)f->Get("ntuple");
+
+UInt_t nTrigsEm = 0;
+UInt_t eventBX = 0; 
+std::vector<double> *shift = 0;
+std::vector<double> *positionEm= 0;
+std::vector<double> *directionEm= 0;
+std::vector<int> *bxTimeEm= 0;
+std::vector<short> *qualityEm= 0;
+std::vector<double> *chi2Em= 0;
+std::vector<short> *wheelEm= 0;
+std::vector<short> *sectorEm= 0;
+std::vector<short> *stationEm= 0;
+std::vector<std::vector<short>> *lateralitiesEm= 0;
+std::vector<std::vector<int>> *wiresEm= 0;
+std::vector<std::vector<int>> *tdcsEm= 0;
+
+// Cargo la ntupla del firmware
+TFile *f1 = new TFile("./outputfw.root");
+TTree *ntuple1 = (TTree*)f1->Get("ntuple");
+
+UInt_t nTrigsFw = 0;
+std::vector<double> *positionFw= 0;
+std::vector<double> *directionFw= 0;
+std::vector<int> *bxTimeFw= 0;
+std::vector<int> *arrivalBXFw= 0;
+std::vector<short> *qualityFw= 0;
+std::vector<double> *chi2Fw= 0;
+std::vector<short> *wheelFw= 0;
+std::vector<short> *sectorFw= 0;
+std::vector<short> *stationFw= 0;
+std::vector<std::vector<short>> *lateralitiesFw= 0;
+std::vector<std::vector<int>> *wiresFw= 0;
+std::vector<std::vector<int>> *tdcsFw= 0;
+
+
+ // Cargo la ntupla del firmware
+TFile *f2 = new TFile("./hits.root");
+TTree *ntuple2 = (TTree*)f2->Get("ntuple");
+
+UInt_t nHits = 0;
+std::vector<int> *hitTdcs=0;
+std::vector<int> *hitLayers=0;
+std::vector<int> *hitCells=0;
+std::vector<double> *hitShift=0;
+std::vector<short> *hitWheels=0;
+std::vector<short> *hitSectors=0;
+std::vector<short> *hitStations=0;
+std::vector<short> *hitSuperlayers=0;
+
+
 
 /***************************************************************************************
  *
- *			           SUBPROGRAMAS
+ *                    			           SUBPROGRAMAS
  *
  * *************************************************************************************/
 
 struct hit
 {
+  short wheel; 
+  short sector; 
+  short station; 
+  double shift; 
   int sl; 
   int la; 
   int cell; 
   int tdc;
 };
 
-void printHits (std::vector <hit> hits) {
-  for (auto & hit : hits) cout << hit.sl << " " << hit.la << " " << hit.cell << " " << hit.tdc << endl;
+bool bigger (pair<short,size_t> i, pair<short, size_t> j) { return (i.first>j.first) ; } 
+
+
+std::map < int, std::vector < pair < short, size_t>  > > orderPrimitives () {
+
+  std::map < int,  std::vector < pair < short, size_t>  > > primitiveIndexes;
+
+  for (std::size_t iTrigEm = 0; iTrigEm < nTrigsEm; iTrigEm++) {
+    primitiveIndexes[ 100*sectorEm->at(iTrigEm) + 10*( wheelEm->at(iTrigEm) + 2 ) + stationEm->at(iTrigEm)].push_back(make_pair(qualityEm->at(iTrigEm),iTrigEm)); 
+  }
+
+
+  for (auto & par : primitiveIndexes) {
+    std::sort ( par.second.begin(), par.second.end() , bigger);  
+  }
+
+  return primitiveIndexes; 
+
 }
 
+void printFWPrims ( int wheel, int sector, int station ) {
+  for (std::size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++) {
+    if (wheelFw->at(iTrigFw)!=wheel || sectorFw->at(iTrigFw)!=sector || stationFw->at(iTrigFw)!=station) continue;
+	  cout << "--------- Primitive in iTrigFW=" << iTrigFw << "-----------" << endl;
+    for (int deb = 0; deb < 8; deb++)
+        cout << wiresFw->at(iTrigFw)[deb] << " " << tdcsFw->at(iTrigFw)[deb] << " "<< lateralitiesFw->at(iTrigFw)[deb]  << endl;  
+    cout << "ArrivalBX: "<< arrivalBXFw->at(iTrigFw) << endl; 
+  }
+}
+
+void printJMHits (std::vector <hit> hits) {
+  for (auto & hit : hits) 
+    cout << hit.sl << " "
+         << hit.la << " "
+         << hit.cell << " " 
+         << hit.tdc << endl;
+}
+
+void printFullHits (std::vector <hit> hits) {
+  for (auto & hit : hits) 
+    cout << hit.wheel << " " 
+         << hit.sector << " " 
+         << hit.station << " " 
+         << hit.shift << " " 
+         << hit.sl << " " 
+         << hit.la << " " 
+         << hit.cell << " " 
+         << hit.tdc << endl;
+}
 
 int numFromQuality (int quality){
   if (quality == 1) return 3; 
@@ -121,31 +233,6 @@ int qualityGroup (int quality) {
 void comparator_fw(){
 
 
-
-  gStyle->SetOptStat(1111111);
-
-/**************************************************************************************
- * 			              NTUPLAS
-**************************************************************************************/
-// Cargo la ntupla de las primitivas
-TFile *f = new TFile("./primitives.root");
-TTree *ntuple = (TTree*)f->Get("ntuple");
-
-UInt_t nTrigsEm = 0;
-UInt_t eventBX = 0; 
-std::vector<double> *shift = 0;
-std::vector<double> *positionEm= 0;
-std::vector<double> *directionEm= 0;
-std::vector<int> *bxTimeEm= 0;
-std::vector<short> *qualityEm= 0;
-std::vector<double> *chi2Em= 0;
-std::vector<short> *wheelEm= 0;
-std::vector<short> *sectorEm= 0;
-std::vector<short> *stationEm= 0;
-std::vector<std::vector<short>> *lateralitiesEm= 0;
-std::vector<std::vector<int>> *wiresEm= 0;
-std::vector<std::vector<int>> *tdcsEm= 0;
-
 ntuple->SetBranchAddress("eventBX",  &eventBX);
 ntuple->SetBranchAddress("numberOfTrigs",  &nTrigsEm);
 ntuple->SetBranchAddress("Quality",&qualityEm);
@@ -161,27 +248,11 @@ ntuple->SetBranchAddress("Lateralities",&lateralitiesEm);
 ntuple->SetBranchAddress("Cellnumber",&wiresEm);
 ntuple->SetBranchAddress("tdcTime",&tdcsEm);
 
-// Cargo la ntupla del firmware
-TFile *f1 = new TFile("./outputfw.root");
-TTree *ntuple1 = (TTree*)f1->Get("ntuple");
-
-UInt_t nTrigsFw = 0;
-std::vector<double> *positionFw= 0;
-std::vector<double> *directionFw= 0;
-std::vector<int> *bxTimeFw= 0;
-std::vector<short> *qualityFw= 0;
-std::vector<double> *chi2Fw= 0;
-std::vector<short> *wheelFw= 0;
-std::vector<short> *sectorFw= 0;
-std::vector<short> *stationFw= 0;
-std::vector<std::vector<short>> *lateralitiesFw= 0;
-std::vector<std::vector<int>> *wiresFw= 0;
-std::vector<std::vector<int>> *tdcsFw= 0;
-
 ntuple1->SetBranchAddress("numberOfTrigs",&nTrigsFw);
 ntuple1->SetBranchAddress("Position",&positionFw);
 ntuple1->SetBranchAddress("Direction",&directionFw);
 ntuple1->SetBranchAddress("Time",&bxTimeFw);
+ntuple1->SetBranchAddress("ArrivalBX",&arrivalBXFw);
 ntuple1->SetBranchAddress("Quality",&qualityFw);
 ntuple1->SetBranchAddress("chi2",&chi2Fw);
 ntuple1->SetBranchAddress("Wheel",&wheelFw);
@@ -191,27 +262,17 @@ ntuple1->SetBranchAddress("Lateralities",&lateralitiesFw);
 ntuple1->SetBranchAddress("Cellnumber",&wiresFw);
 ntuple1->SetBranchAddress("tdcTime",&tdcsFw);
 
- // Cargo la ntupla del firmware
-TFile *f2 = new TFile("./hits.root");
-TTree *ntuple2 = (TTree*)f2->Get("ntuple");
-
-UInt_t nHits = 0;
-std::vector<int> *hitTdcs=0;
-std::vector<int> *hitLayers=0;
-std::vector<int> *hitCells=0;
-std::vector<short> *hitWheels=0;
-std::vector<short> *hitSectors=0;
-std::vector<short> *hitStations=0;
-std::vector<short> *hitSuperlayers=0;
-
 ntuple2->SetBranchAddress("numberOfHits",&nHits);
 ntuple2->SetBranchAddress("hitTdc",&hitTdcs);
 ntuple2->SetBranchAddress("hitLayer",&hitLayers);
 ntuple2->SetBranchAddress("hitCell",&hitCells);
+ntuple2->SetBranchAddress("hitShift",&hitShift);
 ntuple2->SetBranchAddress("hitWheel",&hitWheels);
 ntuple2->SetBranchAddress("hitStation",&hitStations);
 ntuple2->SetBranchAddress("hitSector",&hitSectors);
 ntuple2->SetBranchAddress("hitSuperlayer",&hitSuperlayers);
+
+gStyle->SetOptStat(1111111);
 
 
 int n1 = ntuple->GetEntries(); 
@@ -232,7 +293,7 @@ std::map<std::string, TH1*> m_plots;
 std::map<std::string, TH2*> m_plots2;
 std::map<std::string, TEfficiency*> m_plotsEff;
 
-std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality","Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
+std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality","Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9", "3h", "4h"};  
 //std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
 
 //int nbinx = 21;    double xmin = 0.105;
@@ -253,6 +314,7 @@ std::vector <std::string> fitLabels = {"Same fit", "Different fit"};
 std::vector <std::string> eventLabels = {"Events with same fits", "Events with at least one different fit"}; 
 
 
+m_plots["h_hitDistr"] = new TH1F ("h_hitDistr","; ; Entries", 38 , -2.5, 40.5);
 m_plots["h_goodEvents"] = new TH1F ("h_goodEvents","; ; Entries",2 , -0.5, 1.5);
 for (unsigned int i = 0; i < eventLabels.size(); i++){
   m_plots["h_goodEvents"]->GetXaxis()->SetBinLabel(i+1, eventLabels.at(i).c_str());
@@ -317,48 +379,67 @@ for (auto & category : qualityNumbers) {
  * 					BUCLE
  *************************************************************************************/ 					
 
-//for (Int_t i = 0; i < 10; i++){
+//for (Int_t i = 0; i < 1; i++){
 for (Int_t i = 0; i < nEntries; i++){
 //cout << "************************************************************************" << endl;  
-  //if (i!=96) continue;
+  //if (i!=242) continue;
   //if (i!=277) continue;
   ntuple->GetEntry(i);
   ntuple1->GetEntry(i);
   ntuple2->GetEntry(i);
-//  cout << nTrigsEm << endl; 
 
   short oldStation=-1, oldWheel=-1, oldSector=-1;
   bool gotSameFit = true;   
   int numberOfHits = 0; 
   
-  /*struct hit
-  {
-    int sl; 
-    int la; 
-    int cell; 
-    int tdc;
-  }; */
   std::vector <hit> hitsInChamber;
   hitsInChamber.clear();
 
 
-  for (std::size_t iTrigEm = 0; iTrigEm < nTrigsEm; iTrigEm++) {
+  bool newPrintHits = false;
+
+
+  std::map < int,  std::vector < pair < short, size_t>  > > primitiveIndexes =  orderPrimitives();
+
+
+  for (auto & chan : primitiveIndexes) {
+    int vistaLaPrimera = false; 
+    for (auto & pair : chan.second ) {
+      size_t iTrigEm = pair.second; 
+
+    //if ( round ( bxTimeEm -> at (iTrigEm) / 25. )  != eventBX   ) continue; 
+    if ( vistaLaPrimera ) continue; 
+    //vistaLaPrimera = true; 
+
+  // for (std::size_t iTrigEm = 0; iTrigEm < nTrigsEm; iTrigEm++) {
+    
     int bestTrigFw = -1; 
     int bestTimeFw = 99999;      
     int biggestNumOfHits = 0;    
     int totalNumOfHits = 0;    
     int biggestTrigFw = -1;    
 
+
+
     if (oldStation == -1) { 
       oldStation =  stationEm->at(iTrigEm);
       oldWheel =  wheelEm->at(iTrigEm);
       oldSector =  sectorEm->at(iTrigEm);
-
       hitsInChamber.clear();
+      newPrintHits = printHits;
+
       for (std::size_t iTrigHits = 0; iTrigHits < nHits; iTrigHits++) { 
         if (oldStation == hitStations->at(iTrigHits) && oldWheel == hitWheels->at(iTrigHits) && oldSector == hitSectors->at(iTrigHits)   ) {
           numberOfHits++;
-          hitsInChamber.push_back(hit{hitSuperlayers->at(iTrigHits)-1,hitLayers->at(iTrigHits),hitCells->at(iTrigHits),hitTdcs->at(iTrigHits)});
+          hitsInChamber.push_back(hit{
+              hitWheels->at(iTrigHits),  
+              hitSectors->at(iTrigHits),  
+              hitStations->at(iTrigHits), 
+              hitShift->at(iTrigHits),  
+              hitSuperlayers->at(iTrigHits) - 1,  
+              hitLayers->at(iTrigHits), 
+              hitCells->at(iTrigHits), 
+              hitTdcs->at(iTrigHits) });  
         }
       } 
     //  cout << numberOfHits << endl; 
@@ -372,16 +453,36 @@ for (Int_t i = 0; i < nEntries; i++){
       oldSector =  sectorEm->at(iTrigEm);
       numberOfHits=0;
       hitsInChamber.clear();
+      newPrintHits = printHits;
       for (std::size_t iTrigHits = 0; iTrigHits < nHits; iTrigHits++) { 
         if (oldStation == hitStations->at(iTrigHits) && oldWheel == hitWheels->at(iTrigHits) && oldSector == hitSectors->at(iTrigHits)   ) { 
           numberOfHits++;
-          hitsInChamber.push_back(hit{hitSuperlayers->at(iTrigHits)-1,hitLayers->at(iTrigHits),hitCells->at(iTrigHits),hitTdcs->at(iTrigHits)});
+          hitsInChamber.push_back(hit{
+              hitWheels->at(iTrigHits),  
+              hitSectors->at(iTrigHits),  
+              hitStations->at(iTrigHits), 
+              hitShift->at(iTrigHits),  
+              hitSuperlayers->at(iTrigHits) - 1,  
+              hitLayers->at(iTrigHits), 
+              hitCells->at(iTrigHits), 
+              hitTdcs->at(iTrigHits) });  
          // cout << "Insert hit " << endl;
         }
       }
     }
 
+    m_plots["h_hitDistr"] -> Fill (numberOfHits);
     if (numberOfHits > numberOfHitsTh ) continue; 
+
+
+    //cout << newPrintHits <<  " " << qualityEm->at(iTrigEm) << " " << hitsInChamber.size() << endl;
+    if (newPrintHits && qualityEm->at(iTrigEm) >= 6) {
+      printFullHits (hitsInChamber);
+      newPrintHits = false;
+    }
+
+
+
 
     for (std::size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++) {
       if ( (wheelEm->at(iTrigEm) == wheelFw->at(iTrigFw)) && (stationEm->at(iTrigEm) == stationFw->at(iTrigFw)) && (sectorEm->at(iTrigEm) == sectorFw->at(iTrigFw)) ) {
@@ -433,6 +534,8 @@ for (Int_t i = 0; i < nEntries; i++){
           else if (qualityEm->at(iTrigEm) == 6) outCategories.push_back("Q6");
           else if (qualityEm->at(iTrigEm) == 8) outCategories.push_back("Q8");
           else if (qualityEm->at(iTrigEm) == 9) outCategories.push_back("Q9");
+          if (qualityGroup(qualityEm->at(iTrigEm)) == 1 ) outCategories.push_back("3h");
+          if (qualityGroup(qualityEm->at(iTrigEm)) == 2 ) outCategories.push_back("4h");
         } 	
       else if (qualityEm->at(iTrigEm) > qualityFw->at(bestTrigFw)) outCategories.push_back("emulBetterQuality"); 	
       else if (qualityEm->at(iTrigEm) < qualityFw->at(bestTrigFw)) outCategories.push_back("fwBetterQuality"); 
@@ -518,53 +621,64 @@ for (Int_t i = 0; i < nEntries; i++){
       else if (qualityEm->at(iTrigEm) == 6) outCategories.push_back("Q6");
       else if (qualityEm->at(iTrigEm) == 8) outCategories.push_back("Q8");
       else if (qualityEm->at(iTrigEm) == 9) outCategories.push_back("Q9");
+      if (qualityGroup(qualityEm->at(iTrigEm)) == 1 ) outCategories.push_back("3h");
+      if (qualityGroup(qualityEm->at(iTrigEm)) == 2 ) outCategories.push_back("4h");
       for (auto & outCat : outCategories) {
         m_plotsEff["hEfficiencyVsHits"+outCat] -> Fill(0,numberOfHits);
         m_plots["h_sameFit"+outCat]->Fill(1);
 	m_plots2["h_numOfHits"+outCat]->Fill(numFromQuality(qualityEm->at(iTrigEm)),biggestNumOfHits);
       }
-        if (numFromQuality(qualityEm->at(iTrigEm))==3 && biggestNumOfHits!=0 && verLosMalos) {
+      if (numFromQuality(qualityEm->at(iTrigEm))==hitsToStudy && biggestNumOfHits!=0 && verLosMalos) {
         //if (numFromQuality(qualityFw->at(biggestTrigFw)) == 4) continue; 
-        //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits==4 &&  && biggestNumOfHits!=0 && verLosMalos) {
-        //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
-        //if (false == true && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
-        //if (numFromQuality(qualityEm->at(iTrigEm)) == biggestNumOfHits && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
-	  cout << "----------- " << i <<" ---------" << endl;
-	  cout << qualityEm->at(iTrigEm)<< " "<<numFromQuality(qualityEm->at(iTrigEm)) << " " << biggestNumOfHits << endl; 
-	  cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
-	  for (int deb = 0; deb < 8; deb++){
-            cout << wiresEm->at(iTrigEm)[deb] << " " << tdcsEm->at(iTrigEm)[deb] << " "<< lateralitiesEm->at(iTrigEm)[deb]  << " " << wiresFw->at(biggestTrigFw)[deb] << " " << tdcsFw->at(biggestTrigFw)[deb] << " "<< lateralitiesFw->at(biggestTrigFw)[deb]  << endl;  
-	  } 
-	    cout << "PosEmul "    << positionEm->at(iTrigEm) - shift->at(iTrigEm)  << " PosFW "  << positionFw->at(biggestTrigFw) << endl;
-	    cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " TimeFW " << bxTimeFw->at(biggestTrigFw)                        << endl;
-	    cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsiFW "  << -directionFw->at(biggestTrigFw)                 << endl;
-	    cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << 4.*chi2Fw->at(biggestTrigFw)/(1024.*100)                          << endl;
-      cout << "Hits in this chamber:" << endl;
-      printHits(hitsInChamber);
-	} else if (numFromQuality(qualityEm->at(iTrigEm))==3 && biggestNumOfHits==0 && verLosMalos) {
-	//} else if (numFromQuality(qualityEm->at(iTrigEm))==8 && biggestNumOfHits==0 && verLosMalos && true==false) {
-        //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
-        //if (false == true && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
-        //if (numFromQuality(qualityEm->at(iTrigEm)) == biggestNumOfHits && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) {
-	  cout << "----------- " << i <<" ---------" << endl;
-	  //cout << qualityEm->at(iTrigEm)<< " "<<numFromQuality(qualityEm->at(iTrigEm)) << " " << biggestNumOfHits << endl; 
-	  cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
-	  for (int deb = 0; deb < 8; deb++){
-            cout << wiresEm->at(iTrigEm)[deb] << " " << tdcsEm->at(iTrigEm)[deb] << " "<< lateralitiesEm->at(iTrigEm)[deb] << endl;  
-	  } 
+        //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits==4 &&  && biggestNumOfHits!=0 && verLosMalos) 
+        //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) 
+        //if (false == true && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) 
+        //if (numFromQuality(qualityEm->at(iTrigEm)) == biggestNumOfHits && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) 
+	      cout << "----------- " << i <<" ---------" << endl;
+	      cout << qualityEm->at(iTrigEm)<< " "<<numFromQuality(qualityEm->at(iTrigEm)) << " " << biggestNumOfHits << endl; 
+	      cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
+	      for (int deb = 0; deb < 8; deb++){
+          cout << wiresEm->at(iTrigEm)[deb] << " " << tdcsEm->at(iTrigEm)[deb] << " "<< lateralitiesEm->at(iTrigEm)[deb]  << " " << wiresFw->at(biggestTrigFw)[deb] << " " << tdcsFw->at(biggestTrigFw)[deb] << " "<< lateralitiesFw->at(biggestTrigFw)[deb]  << endl;  
+	      } 
+	      cout << "PosEmul "    << positionEm->at(iTrigEm) - shift->at(iTrigEm)  << " PosFW "  << positionFw->at(biggestTrigFw) << endl;
+	      cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " TimeFW " << bxTimeFw->at(biggestTrigFw)                        << endl;
+	      cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsiFW "  << -directionFw->at(biggestTrigFw)                 << endl;
+	      cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << 4.*chi2Fw->at(biggestTrigFw)/(1024.*100)                          << endl;
+        cout << "Hits in this chamber:" << endl;
+        printFWPrims ( wheelEm->at(iTrigEm), sectorEm->at(iTrigEm), stationEm->at(iTrigEm) );
+        if (true) printJMHits(hitsInChamber);
+        if (true) printFullHits(hitsInChamber);
+	    } else if (numFromQuality(qualityEm->at(iTrigEm))==hitsToStudy && biggestNumOfHits==0 && verLosMalos) {
+	    //} else if (numFromQuality(qualityEm->at(iTrigEm))==8 && biggestNumOfHits==0 && verLosMalos && true==false) 
+        //if (numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) 
+        //if (false == true && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) 
+        //if (numFromQuality(qualityEm->at(iTrigEm)) == biggestNumOfHits && numFromQuality(qualityEm->at(iTrigEm))==4 && biggestNumOfHits == 3) 
+	    cout << "----------- " << i <<" ---------" << endl;
+	    //cout << qualityEm->at(iTrigEm)<< " "<<numFromQuality(qualityEm->at(iTrigEm)) << " " << biggestNumOfHits << endl; 
+	    cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
+	    for (int deb = 0; deb < 8; deb++){
+        cout << wiresEm->at(iTrigEm)[deb] << " " << tdcsEm->at(iTrigEm)[deb] << " "<< lateralitiesEm->at(iTrigEm)[deb] << endl;  
+	    } 
 	    cout << "PosEmul "    << positionEm->at(iTrigEm) - shift->at(iTrigEm)  << " PosFW "  << -1 << endl;
 	    cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " TimeFW " << -1                        << endl;
 	    cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsiFW "  << -1                 << endl;
 	    cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << -1                         << endl;
       cout << "Hits in this chamber:" << endl;
-      printHits(hitsInChamber);
-	}
+      if (numberOfHits == 10) printJMHits(hitsInChamber);
+      if (numberOfHits == 10) printFullHits(hitsInChamber);
+  	}
 //	break;  
-    } 
+  } 
 
   } // loop over emul
 
 
+} 
+
+
+
+  //for (int i = 0; i < 8; i++) cout << "-1 ";
+  //cout << endl;
 
 } // loop over entries
 
@@ -575,6 +689,7 @@ TFile * file = new TFile ("outPlots.root", "RECREATE");
 **************************************************************************************/
 
 m_plots["h_goodEvents"] -> Write();
+m_plots["h_hitDistr"] -> Write();
 
 for (auto & category : qualityCategories) {
 
