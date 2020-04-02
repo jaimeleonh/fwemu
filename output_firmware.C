@@ -1,11 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void output_firmware() {
-/*       TString dir = gSystem->UnixPathName("./outputfw.C");
-       dir.ReplaceAll("outputfw.C","");
-       dir.ReplaceAll("/./","/");
-*/
+void output_firmware(std::string inputFile, std::string outputFile) {
+      
+       std::string inputTxt; 
+ 
+       if (inputFile == "") {
+        
+       inputTxt = "output_primitives_0104_noprimos.txt";
+
+
+       //ifstream output ("output_prim_181219.txt");
+       //ifstream output ("output_primitives_2303.txt");
+       ifstream output (inputTxt);
+       //ifstream output ("output_primitives_2303_sl1.txt");
+       //ifstream output ("output_100120.txt");
+       //ifstream output ("output_primitives_cor3001.txt");
+       //ifstream output ("output_primitives_sl13001.txt");
+       //ifstream output ("output_last_new.txt");
+       //ifstream output ("output_2perBX.txt");
+       //ifstream output ("output_per4.txt");
+       
+       } else {
+         inputTxt = inputFile+".txt";
+       }
+
+       ifstream output (inputTxt);
+       
+       
+       TString outputRootFile;   
+       if (outputFile == "") {
+         outputRootFile = "outputfw.root";
+       } else {
+         outputRootFile = outputFile + ".root";
+       }
+
+
+       std::cout << "Converting " << inputTxt << " to ROOT file " << outputRootFile << endl; 
+
        UInt_t nTrigs = 0;
 
 
@@ -13,6 +45,7 @@ void output_firmware() {
        std::vector<double> m_direction;
        std::vector<int> m_time;
        std::vector<int> m_arrivalBX;
+       std::vector<int> m_lastHitBX;
        std::vector<double> m_chi2;
        std::vector<short> m_quality;
        std::vector<short> m_superlayer;
@@ -27,6 +60,7 @@ void output_firmware() {
        m_direction.clear();
        m_time.clear();
        m_arrivalBX.clear();
+       m_lastHitBX.clear();
        m_chi2.clear();
        m_quality.clear();
        m_superlayer.clear();
@@ -37,7 +71,7 @@ void output_firmware() {
        m_wires.clear();
        m_tdcs.clear();
 
-       TFile *hfile = new TFile("outputfw.root","RECREATE");
+       TFile *hfile = new TFile(outputRootFile,"RECREATE");
        TTree *m_tree = new TTree("ntuple", "Root tree");
        
        m_tree->Branch("numberOfTrigs",  &nTrigs);
@@ -45,6 +79,7 @@ void output_firmware() {
        m_tree->Branch("Direction",  &m_direction);
        m_tree->Branch("Time",  &m_time);
        m_tree->Branch("ArrivalBX",  &m_arrivalBX);
+       m_tree->Branch("lastHitBX",  &m_lastHitBX);
        m_tree->Branch("chi2",  &m_chi2);
        m_tree->Branch("Superlayer",  &m_superlayer);
        m_tree->Branch("Quality",  &m_quality);
@@ -60,6 +95,7 @@ void output_firmware() {
        double direction;
        int time; 
        int arrivalBX; 
+       int lastHitBX; 
        double chi2;
        short quality;
        short superlayer;
@@ -74,18 +110,10 @@ void output_firmware() {
        std::vector<int> tdcs;
        
 
-       //ifstream output ("output_prim_181219.txt");
-       ifstream output ("output_primitives_2802_sl1.txt");
-       //ifstream output ("output_100120.txt");
-       //ifstream output ("output_primitives_cor3001.txt");
-       //ifstream output ("output_primitives_sl13001.txt");
-       //ifstream output ("output_last_new.txt");
-       //ifstream output ("output_2perBX.txt");
-       //ifstream output ("output_per4.txt");
        if (output.is_open()){
          //  while(output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) {
          //while(output>>index>>position>>direction>>time>>quality>>chi2>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) { // Before 28/02
-         while(output>>index>>position>>direction>>time>>arrivalBX>>quality>>chi2>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) { // After 28/02
+         while(output>>index>>position>>direction>>time>>lastHitBX>>arrivalBX>>quality>>chi2>>wheel>>sector>>station>>wi1>>wi2>>wi3>>wi4>>wi5>>wi6>>wi7>>wi8>>tdc1>>tdc2>>tdc3>>tdc4>>tdc5>>tdc6>>tdc7>>tdc8>>lat1>>lat2>>lat3>>lat4>>lat5>>lat6>>lat7>>lat8) { // After 28/02
          //while(!output.eof()){
          //output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station;
          if (index != -1) {
@@ -124,6 +152,7 @@ void output_firmware() {
 	   m_position.push_back(position);
            m_direction.push_back(direction);
            m_time.push_back(time);
+           m_lastHitBX.push_back(lastHitBX);
            m_arrivalBX.push_back(arrivalBX);
            m_quality.push_back(quality);
            m_chi2.push_back(chi2);
@@ -140,6 +169,7 @@ void output_firmware() {
            m_direction.clear();
            m_chi2.clear();
            m_time.clear();
+           m_lastHitBX.clear();
            m_arrivalBX.clear();
            m_quality.clear();
            m_wheel.clear();
@@ -156,6 +186,8 @@ void output_firmware() {
        m_position.clear();
        m_direction.clear();
        m_time.clear();
+       m_lastHitBX.clear();
+       m_arrivalBX.clear();
        m_quality.clear();
        m_chi2.clear();
        m_wheel.clear();

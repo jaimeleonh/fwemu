@@ -42,8 +42,8 @@ using namespace std;
 const bool debug = false; 
 //const bool debug = true; 
 
-//const bool verLosMalos = false; 
-const bool verLosMalos = true; 
+const bool verLosMalos = false; 
+//const bool verLosMalos = true; 
 
 const int hitsToStudy = 3; 
 
@@ -54,8 +54,28 @@ const bool printHits = false;
 const int numberOfHitsTh = 12;
 
 
+/*************************************************************************************
+ *                                GLOBAL VARIABLES
+ * **********************************************************************************/
+
+std::map<std::string, TH1*> m_plots;
+std::map<std::string, TH2*> m_plots2;
+std::map<std::string, TEfficiency*> m_plotsEff;
+
+struct hit
+{
+  short wheel; 
+  short sector; 
+  short station; 
+  double shift; 
+  int sl; 
+  int la; 
+  int cell; 
+  int tdc;
+};
+
 /**************************************************************************************
- * 			              NTUPLAS
+ * 			                               NTUPLAS
 **************************************************************************************/
 // Cargo la ntupla de las primitivas
 TFile *f = new TFile("./primitives.root");
@@ -84,6 +104,7 @@ UInt_t nTrigsFw = 0;
 std::vector<double> *positionFw= 0;
 std::vector<double> *directionFw= 0;
 std::vector<int> *bxTimeFw= 0;
+std::vector<int> *lastHitBXFw= 0;
 std::vector<int> *arrivalBXFw= 0;
 std::vector<short> *qualityFw= 0;
 std::vector<double> *chi2Fw= 0;
@@ -117,17 +138,129 @@ std::vector<short> *hitSuperlayers=0;
  *
  * *************************************************************************************/
 
-struct hit
-{
-  short wheel; 
-  short sector; 
-  short station; 
-  double shift; 
-  int sl; 
-  int la; 
-  int cell; 
-  int tdc;
-};
+
+int getFwSL (int iTrigFw) {
+  if (wiresFw->at(iTrigFw)[0] == -1 && wiresFw->at(iTrigFw)[0] == -1 && wiresFw->at(iTrigFw)[0] == -1 && wiresFw->at(iTrigFw)[3] == -1 ) return 3; 
+  else if (wiresFw->at(iTrigFw)[4] == -1 && wiresFw->at(iTrigFw)[5] == -1 && wiresFw->at(iTrigFw)[6] == -1 && wiresFw->at(iTrigFw)[7] == -1 ) return 1; 
+  else return 0; 
+}
+
+int getEmSL (int iTrigEm) {
+  if (wiresEm->at(iTrigEm)[0] == -1 && wiresEm->at(iTrigEm)[0] == -1 && wiresEm->at(iTrigEm)[0] == -1 && wiresEm->at(iTrigEm)[3] == -1 ) return 3; 
+  else if (wiresEm->at(iTrigEm)[4] == -1 && wiresEm->at(iTrigEm)[5] == -1 && wiresEm->at(iTrigEm)[6] == -1 && wiresEm->at(iTrigEm)[7] == -1 ) return 1; 
+  else return 0;
+}
+
+/***************************************** FILL LATERALITY PLOTS **************************************************/
+
+std::vector <std::vector <int> > cellLayouts = {{0,-1,-2,-3},{0,-1,-2,-1},{0,-1,0,-1},{0,-1,0,1},{0,1,0,-1},{0,1,0,1},{0,1,2,1},{0,1,2,3}};
+
+int getNonValidLayer (std::vector<bool> myValids) {
+  for (int i = 0; i < 4; i++){
+    if (myValids[i] == false ) return i + 1; 
+  }
+  return 0; 
+}
+
+bool compareLays (std::vector<int> refLayout, std::vector<int> myLayout, std::vector<bool> myValids) {
+  for (int i = 0; i < 4; i++){
+    if (myValids[i] && refLayout[i] != myLayout[i] ) return false; 
+  } 
+  return true; 
+}
+
+int getLatComb ( int iTrigEm, int sl, std::vector<bool> myValids ) {
+  int sum4 = sl/2 * 4;
+  int pot = 1;
+
+  int myLat = 0; 
+  for (int i = 0; i<4; i++){ 
+    if (myValids[3-i]) { 
+      myLat = myLat + lateralitiesEm->at(iTrigEm)[sum4+3-i]*pot;  
+    } 
+    pot = 2*pot; 
+  }
+  //cout << "myLat " << myLat << endl; 
+  if (myLat < 0) cout << "ERROR iTrigEm " << iTrigEm << " myLat " << myLat << endl;  
+  return myLat; 
+}
+
+void fillLats (int iTrigEm, int sl, std::string plot) {
+ 
+  int sum4 = sl/2 * 4; 
+  std::vector <bool> validLayout; 
+  int nonValid; 
+
+
+  if ( wiresEm->at(iTrigEm)[0+sum4] != -1 ) { // FILL 0***
+    
+    validLayout.push_back ( true );
+
+    std::vector <int> cellLayout = {0};
+    cellLayout.push_back ( 2*(wiresEm->at(iTrigEm)[1+sum4] - wiresEm->at(iTrigEm)[0+sum4]) - 1 ); validLayout.push_back ( wiresEm->at(iTrigEm)[1+sum4] != -1 );
+    cellLayout.push_back ( 2*(wiresEm->at(iTrigEm)[2+sum4] - wiresEm->at(iTrigEm)[0+sum4])     ); validLayout.push_back ( wiresEm->at(iTrigEm)[2+sum4] != -1 );
+    cellLayout.push_back ( 2*(wiresEm->at(iTrigEm)[3+sum4] - wiresEm->at(iTrigEm)[0+sum4]) - 1 ); validLayout.push_back ( wiresEm->at(iTrigEm)[3+sum4] != -1 );
+
+    //cout << "CellLayout " << cellLayout[0] << " " << cellLayout[1] << " " << cellLayout[2] << " " << cellLayout[3] << " " << endl; 
+
+    nonValid = getNonValidLayer(validLayout); 
+
+    for (auto & layout : cellLayouts) {
+      if (compareLays (layout, cellLayout, validLayout ) ) {
+        //if (plot=="badLats" && layout[0] == 0 && layout[1] == -1 && layout[2] == 0 && layout[3] == -1) cout << "Aqui hay uno feo con" << getLatComb(iTrigEm, sl, validLayout) << endl; 
+        if (plot == "badLats" && layout[0] == 0 && layout[1] == -1 && layout[2] == 0 && layout[3] == -1 && getLatComb(iTrigEm, sl, validLayout) == 4 && nonValid == 4 ) cout << "Aqui hay uno feo " << endl; 
+        //if (plot=="badLats" && layout[0] == 0 && layout[1] == -1 && layout[2] == -2 && layout[3] == -3 && getLatComb(iTrigEm, sl, validLayout), nonValid == 5 ) cout << "Aqui hay uno feo " << endl; 
+        m_plots2[plot+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] -> Fill (getLatComb(iTrigEm, sl, validLayout), nonValid );
+      }
+    }
+
+
+  } else { //FILL X***
+ 
+    nonValid = 1; 
+
+    validLayout.push_back ( false );
+    validLayout.push_back ( wiresEm->at(iTrigEm)[1+sum4] != -1 );
+    validLayout.push_back ( wiresEm->at(iTrigEm)[2+sum4] != -1 );
+    validLayout.push_back ( wiresEm->at(iTrigEm)[3+sum4] != -1 );
+
+
+    // FILL X-1**
+    std::vector <int> cellLayout1 = {-1};
+    cellLayout1.push_back (    wiresEm->at(iTrigEm)[1+sum4] - wiresEm->at(iTrigEm)[1+sum4]  + 1     );
+    cellLayout1.push_back ( 2*(wiresEm->at(iTrigEm)[2+sum4] - wiresEm->at(iTrigEm)[1+sum4]) + 2     );
+    cellLayout1.push_back ( 2*(wiresEm->at(iTrigEm)[3+sum4] - wiresEm->at(iTrigEm)[1+sum4]) + 1     );
+    //cout << "CellLayout1 " << cellLayout1[0] << " " << cellLayout1[1] << " " << cellLayout1[2] << " " << cellLayout1[3] << " " << endl; 
+   
+    for (auto & layout : cellLayouts) {
+      if (compareLays (layout, cellLayout1, validLayout ) ) {
+        m_plots2[plot+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] -> Fill (getLatComb(iTrigEm, sl, validLayout), nonValid );
+      }
+    }
+
+    // FILL X1**
+    std::vector <int> cellLayout2 = {-1};
+    cellLayout2.push_back (    wiresEm->at(iTrigEm)[1+sum4] - wiresEm->at(iTrigEm)[1+sum4] - 1      );
+    cellLayout2.push_back ( 2*(wiresEm->at(iTrigEm)[2+sum4] - wiresEm->at(iTrigEm)[1+sum4])         );
+    cellLayout2.push_back ( 2*(wiresEm->at(iTrigEm)[3+sum4] - wiresEm->at(iTrigEm)[1+sum4]) - 1     );
+    //cout << "CellLayout2 " << cellLayout2[0] << " " << cellLayout2[1] << " " << cellLayout2[2] << " " << cellLayout2[3] << " " << endl; 
+  
+    for (auto & layout : cellLayouts) {
+      if (compareLays (layout, cellLayout2, validLayout ) ) {
+    //    if ( layout[0] == 0 && layout[1] == -1 && layout[2] == 0 && layout[3] == -1) cout << "Aqui hay uno feo " << endl; 
+        //if (layout[0] == 0 && layout[1] == -1 && layout[2] == 0 && layout[3] == -1 && getLatComb(iTrigEm, sl, validLayout), nonValid == 5 ) cout << "Aqui hay uno feo " << endl; 
+        //if (plot == "badLats" && layout[0] == 0 && layout[1] == -1 && layout[2] == 0 && layout[3] == -1 && getLatComb(iTrigEm, sl, validLayout) == 5 && nonValid == 5 ) cout << "Aqui hay uno feo " << endl; 
+        m_plots2[plot+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] -> Fill (getLatComb(iTrigEm, sl, validLayout), nonValid );
+      }
+    }
+ 
+  }
+}
+
+
+
+/******************************************************************************************************************/
+
 
 bool bigger (pair<short,size_t> i, pair<short, size_t> j) { return (i.first>j.first) ; } 
 
@@ -148,6 +281,24 @@ std::map < int, std::vector < pair < short, size_t>  > > orderPrimitives () {
   return primitiveIndexes; 
 
 }
+
+void seeFWPrims ( int wheel, int sector, int station, int &maxQuality, int &numFits, int *sl, bool *h4sl ) {
+  maxQuality = -1; 
+  numFits = 0; 
+  sl[0] = 0; sl[1] = 0;   
+  h4sl[0] = false; h4sl[1] = false;   
+
+  for (std::size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++) {
+    if (wheelFw->at(iTrigFw)!=wheel || sectorFw->at(iTrigFw)!=sector || stationFw->at(iTrigFw)!=station) continue;
+    if (qualityFw->at(iTrigFw) > maxQuality ) maxQuality = qualityFw->at(iTrigFw);
+    if (getFwSL(iTrigFw) != 0 ) {
+      sl[getFwSL(iTrigFw) / 2] = iTrigFw; 
+      if (qualityFw->at(iTrigFw) > 2) h4sl[getFwSL(iTrigFw) / 2] = true;
+    }
+    numFits++;
+  }
+}
+
 
 void printFWPrims ( int wheel, int sector, int station ) {
   for (std::size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++) {
@@ -220,14 +371,18 @@ int qualityGroup (int quality) {
   return -1;  
 }
 
-
+void fillLatencies () {
+  for (size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++){
+    m_plots["h_Latencies"]->Fill(arrivalBXFw->at(iTrigFw) - lastHitBXFw->at(iTrigFw));
+  }
+}
 
 
 
 /***************************************************************************************
- *										       *
- *		*****************PROGRAMA PRINCIPAL*******************		       *
- *										       *
+ *										       
+ *	               *****************PROGRAMA PRINCIPAL*******************		       
+ *										       
  * *************************************************************************************/
 
 void comparator_fw(){
@@ -252,6 +407,7 @@ ntuple1->SetBranchAddress("numberOfTrigs",&nTrigsFw);
 ntuple1->SetBranchAddress("Position",&positionFw);
 ntuple1->SetBranchAddress("Direction",&directionFw);
 ntuple1->SetBranchAddress("Time",&bxTimeFw);
+ntuple1->SetBranchAddress("lastHitBX",&lastHitBXFw);
 ntuple1->SetBranchAddress("ArrivalBX",&arrivalBXFw);
 ntuple1->SetBranchAddress("Quality",&qualityFw);
 ntuple1->SetBranchAddress("chi2",&chi2Fw);
@@ -289,9 +445,6 @@ cout << "Emulator segments: " << ntuple->GetEntries() << " AB7 outputs " << ntup
  * 				Declaramos histogramas
 **************************************************************************************/
 
-std::map<std::string, TH1*> m_plots;
-std::map<std::string, TH2*> m_plots2;
-std::map<std::string, TEfficiency*> m_plotsEff;
 
 std::vector <std::string> qualityCategories = {"All", "sameQuality", "emulBetterQuality", "fwBetterQuality","Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9", "3h", "4h"};  
 //std::vector <std::string> qualityNumbers = {"Q1", "Q2", "Q3", "Q4", "Q6", "Q8", "Q9"};  
@@ -319,6 +472,20 @@ m_plots["h_goodEvents"] = new TH1F ("h_goodEvents","; ; Entries",2 , -0.5, 1.5);
 for (unsigned int i = 0; i < eventLabels.size(); i++){
   m_plots["h_goodEvents"]->GetXaxis()->SetBinLabel(i+1, eventLabels.at(i).c_str());
 }
+
+
+m_plots["h_Latencies"] = new TH1F ("h_Latencies","Distribution of latencies; BXs; Entries", 300 , 0, 300);
+
+
+
+std::vector <std::string> q9Labels = {"Other correlated", "4h in SL1 and 4h in SL3", "Other" }; 
+m_plots["h_badQ9"] = new TH1F ("h_badQ9","; ; Entries", 3, -0.5, 2.5);
+for (unsigned int i = 0; i < q9Labels.size(); i++){
+  m_plots["h_badQ9"]->GetXaxis()->SetBinLabel(i+1, q9Labels.at(i).c_str());
+}
+
+m_plots["h_badQ9_ArrBXDif"] = new TH1F ("h_badQ9_ArrBXDif","; #Delta BX ; Entries", 101, -0.5, 100.5 );
+
 
 for (auto & category : qualityCategories) {
 
@@ -356,24 +523,27 @@ for (auto & category : qualityCategories) {
 
 }
 
-/*
-for (auto & category : qualityNumbers) {
+std::vector <std::string> latCombs = {"0000","0001","0010","0011","0100","0101","0110","0111","1000","1001","1010","1011","1100","1101","1110","1111"};
+std::vector <std::string> missing = {"4-hit", "Miss Lay 1", "Miss Lay 2", "Miss Lay 3", "Miss Lay 4"};
 
-  m_plots2["h_tanPhi2D"+category] = new TH2F (("h_tanPhi2D" + category).c_str(), "TanPhi firmware vs TanPhi emulator; TanPhi FW; TanPsi Emul", 400, -1,1, 400, -1, 1);
-  m_plots2["h_pos2D"+category] = new TH2F (("h_pos2D" + category).c_str(), "Position firmware vs Position emulator; Position FW; Position Emul", 250, -250,250, 250, -250, 250);
-  m_plots2["h_time2D"+category] = new TH2F (("h_time2D" + category).c_str(), "BxTime firmware vs BxTime emulator; BxTime FW; BxTime Emul", 1000, 0, 90000, 1000, 0, 90000);
-  m_plots["h_time"+category] = new TH1F (("h_time" + category).c_str(), "BxTime firmware - BxTime emulator; #Delta BxTime (ns); Entries", nbinTime, -timemin, timemin);
-  m_plots["h_time_whenGoodX"+category] = new TH1F (("h_time_whenGoodX" + category).c_str(), "BxTime firmware - BxTime emulator when goodX; #Delta BxTime (ns); Entries", nbinTime, -timemin, timemin);
-  m_plots["h_BX"+category] = new TH1F (("h_BX" + category).c_str(), "BxTime firmware - BxTime emulator; #Delta BxTime (ns); Entries", 7, -87.5, 87.5);
-  m_plots["h_tanPhi"+category] = new TH1F (("h_tanPhi" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
-  m_plots["h_tanPhi_whenSameT0"+category] = new TH1F (("h_tanPhi_whenSameT0" + category).c_str(), "TanPhi firmware - TanPhi emulator; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
-  m_plots["h_tanPhi_whenGoodX"+category] = new TH1F (("h_tanPhi_whenGoodX" + category).c_str(), "TanPhi firmware - TanPhi emulator when goodX; #Delta TanPhi (adim); Entries", nbinTan, -tanmin, tanmin);
-  m_plots["h_pos"+category] = new TH1F (("h_pos" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
-  m_plots["h_pos_whenSameT0"+category] = new TH1F (("h_pos_whenSameT0" + category).c_str(), "Position firmware - Position emulator; #Delta Position (cm); Entries / 0.01 cm", nbinx, -xmin , xmin );
-  m_plots["h_BXFW"+category] = new TH1F (("h_BXFW" + category).c_str(), "BX firmware - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
-  m_plots["h_BXEmul"+category] = new TH1F (("h_BXEmul" + category).c_str(), "BX emulator - eventBX; #Delta BX (adim.); Entries / BX", nbinBX, -bxmin , bxmin );
+for (auto & layout : cellLayouts) {
+  m_plots2["lat"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] = new TH2F (  ("h_lat_" + to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])).c_str(), "", 16, -0.5, 15.5, 5, -0.5, 4.5 ) ;
+  m_plots2["badLats"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] = new TH2F (  ("h_bad_lat_" + to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])).c_str(), "", 16, -0.5, 15.5, 5, -0.5, 4.5 ) ;
+
+  
+  for (unsigned int i = 0; i < latCombs.size(); i++){
+    m_plots2["lat"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])]->GetXaxis()->SetBinLabel(i+1, latCombs.at(i).c_str());
+    m_plots2["badLats"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])]->GetXaxis()->SetBinLabel(i+1, latCombs.at(i).c_str());
+  }
+  for (unsigned int j = 0; j < missing.size(); j++){
+    m_plots2["lat"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])]->GetYaxis()->SetBinLabel(j+1, missing.at(j).c_str());
+    m_plots2["badLats"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])]->GetYaxis()->SetBinLabel(j+1, missing.at(j).c_str());
+  }
+
 }
-*/
+
+
+
 
 /**************************************************************************************
  * 					BUCLE
@@ -381,12 +551,17 @@ for (auto & category : qualityNumbers) {
 
 //for (Int_t i = 0; i < 1; i++){
 for (Int_t i = 0; i < nEntries; i++){
-//cout << "************************************************************************" << endl;  
-  //if (i!=242) continue;
-  //if (i!=277) continue;
+//  if (i!=9513) continue;
+  cout << "**************************************"<< i <<"**********************************" << endl;  
+  //if (i!=1805) continue;
   ntuple->GetEntry(i);
   ntuple1->GetEntry(i);
   ntuple2->GetEntry(i);
+
+
+  fillLatencies();
+
+
 
   short oldStation=-1, oldWheel=-1, oldSector=-1;
   bool gotSameFit = true;   
@@ -418,6 +593,13 @@ for (Int_t i = 0; i < nEntries; i++){
     int biggestNumOfHits = 0;    
     int totalNumOfHits = 0;    
     int biggestTrigFw = -1;    
+
+    if ( getEmSL(iTrigEm) == 1 ) fillLats (iTrigEm, 1, "lat");
+    else if ( getEmSL(iTrigEm) == 3 ) fillLats (iTrigEm, 3, "lat");
+    else {
+      fillLats (iTrigEm, 1, "lat");
+      fillLats (iTrigEm, 3, "lat");
+    }
 
 
 
@@ -486,28 +668,12 @@ for (Int_t i = 0; i < nEntries; i++){
 
     for (std::size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++) {
       if ( (wheelEm->at(iTrigEm) == wheelFw->at(iTrigFw)) && (stationEm->at(iTrigEm) == stationFw->at(iTrigFw)) && (sectorEm->at(iTrigEm) == sectorFw->at(iTrigFw)) ) {
-       /* if (debug) {
-          cout << "++++++++++++++++++++" << endl; 
-	  for (int deb = 0; deb < 8; deb++){
-            cout << wiresEm->at(iTrigEm)[deb] << " " << wiresFw->at(iTrigFw)[deb] << " " << tdcsEm->at(iTrigEm)[deb] << " "<< tdcsFw->at(iTrigFw)[deb] << " "<< lateralitiesEm->at(iTrigEm)[deb] << " "<< lateralitiesFw->at(iTrigFw)[deb] << endl;  
-          } 
-        } */
 	int numberOfHits = sharedHits(wiresEm->at(iTrigEm), wiresFw->at(iTrigFw), tdcsEm->at(iTrigEm), tdcsFw->at(iTrigFw), lateralitiesEm->at(iTrigEm), lateralitiesFw->at(iTrigFw));
 	if (biggestNumOfHits < numberOfHits) {
 	  biggestNumOfHits= numberOfHits; //cout << biggestNumOfHits << endl;  
 	  biggestTrigFw = iTrigFw; 
 	} 
         if (!sameFit(wiresEm->at(iTrigEm), wiresFw->at(iTrigFw), tdcsEm->at(iTrigEm), tdcsFw->at(iTrigFw), lateralitiesEm->at(iTrigEm), lateralitiesFw->at(iTrigFw))) continue;
-        /*if (debug) {
-          cout << "--------------------" << endl; 
-	  cout << "Wh:" << wheelEm->at(iTrigEm) << " Se:" << sectorEm->at(iTrigEm) << " St:" << stationEm->at(iTrigEm) << endl; 
-	  for (int deb = 0; deb < 8; deb++){
-            cout << wiresEm->at(iTrigEm)[deb] <<  " " << tdcsEm->at(iTrigEm)[deb] << " "<< lateralitiesEm->at(iTrigEm)[deb] << endl;  
-	  } 
-	    cout << "PosEmul "    << positionEm->at(iTrigEm) - shift->at(iTrigEm)  << " Pos FW "  << positionFw->at(iTrigFw) << endl;
-	    cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " Time FW " << bxTimeFw->at(iTrigFw)                        << endl;
-	    cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsi FW "  << -directionFw->at(iTrigFw)                     << endl;
-	}*/
         int deltaT0 = abs (bxTimeEm->at(iTrigEm) - bxTimeFw->at(iTrigFw));
         if (deltaT0 <= bestTimeFw) {
           bestTrigFw = iTrigFw; 
@@ -610,6 +776,29 @@ for (Int_t i = 0; i < nEntries; i++){
       //                                                    Haven't found the same fit                                                         //
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+      if ( getEmSL(iTrigEm) == 1 ) fillLats (iTrigEm, 1, "badLats");
+      else if ( getEmSL(iTrigEm) == 3 ) fillLats (iTrigEm, 3, "badLats");
+      else {
+        fillLats (iTrigEm, 1, "badLats");
+        fillLats (iTrigEm, 3, "badLats");
+      }
+
+      if (qualityEm->at(iTrigEm) == 9) {
+        int numPrims, maxQual, sl[2];
+        bool h4sl[2]; 
+        seeFWPrims ( wheelEm->at(iTrigEm), sectorEm->at(iTrigEm), stationEm->at(iTrigEm), maxQual, numPrims, sl, h4sl );
+        if ( maxQual > 4 ) m_plots["h_badQ9"]->Fill( 0 );
+        else {
+          if (numPrims == 2 && h4sl[0] && h4sl[1])  {
+            m_plots["h_badQ9"]->Fill( 1 ); 
+            m_plots["h_badQ9_ArrBXDif"]->Fill( abs(arrivalBXFw->at(sl[0]) - arrivalBXFw->at(sl[1])) );
+            if ( abs(arrivalBXFw->at(sl[0]) - arrivalBXFw->at(sl[1])) < 20 )  cout << i << endl; 
+
+          }
+          else  m_plots["h_badQ9"]->Fill( 2 );
+        }
+      }
+
       gotSameFit = false; 
 
       //cout << biggestNumOfHits << endl; 
@@ -643,7 +832,7 @@ for (Int_t i = 0; i < nEntries; i++){
 	      cout << "PosEmul "    << positionEm->at(iTrigEm) - shift->at(iTrigEm)  << " PosFW "  << positionFw->at(biggestTrigFw) << endl;
 	      cout << "TimeEmul "   << bxTimeEm->at(iTrigEm)    << " TimeFW " << bxTimeFw->at(biggestTrigFw)                        << endl;
 	      cout << "TanPsiEmul " << directionEm->at(iTrigEm) << " TanPsiFW "  << -directionFw->at(biggestTrigFw)                 << endl;
-	      cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << 4.*chi2Fw->at(biggestTrigFw)/(1024.*100)                          << endl;
+	      cout << "chi2Emul " << chi2Em->at(iTrigEm) << " chi2FW "  << chi2Fw->at(biggestTrigFw)/(1024.*100)                          << endl;
         cout << "Hits in this chamber:" << endl;
         printFWPrims ( wheelEm->at(iTrigEm), sectorEm->at(iTrigEm), stationEm->at(iTrigEm) );
         if (true) printJMHits(hitsInChamber);
@@ -687,11 +876,25 @@ TFile * file = new TFile ("outPlots.root", "RECREATE");
 /**************************************************************************************
  * 			           WRITE HISTOGRAMS
 **************************************************************************************/
+/*
+file->cd();
+file->Write();
+file->Close();
+*/
+
 
 m_plots["h_goodEvents"] -> Write();
+m_plots["h_Latencies"] -> Write();
 m_plots["h_hitDistr"] -> Write();
+m_plots["h_badQ9"] -> Write();
+m_plots["h_badQ9_ArrBXDif"] -> Write();
 
-for (auto & category : qualityCategories) {
+for (auto & layout : cellLayouts) {
+  m_plots2["lat"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] -> Write();
+  m_plots2["badLats"+to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3])] -> Write();
+}
+  
+  for (auto & category : qualityCategories) {
 
   m_plotsEff["hEfficiencyVsHits"+category] -> Write();
   m_plots2["h_numOfHits"+category] -> Write();
@@ -716,23 +919,7 @@ for (auto & category : qualityCategories) {
   m_plots["h_tanPhi_whenSameT0"+category] -> Write();
   m_plots["h_pos"+category] -> Write();
   m_plots["h_pos_whenSameT0"+category] -> Write();
-}/* 
-for (auto & category : qualityNumbers) {
-
-  m_plots2["h_tanPhi2D"+category] -> Write();
-  m_plots2["h_pos2D"+category] -> Write();
-  m_plots2["h_time2D"+category] -> Write();
-  m_plots["h_time"+category] -> Write();
-  m_plots["h_time_whenGoodX"+category] -> Write();
-  m_plots["h_BX"+category] -> Write();
-  m_plots["h_BXFW"+category] -> Write();
-  m_plots["h_BXEmul"+category] -> Write();
-  m_plots["h_tanPhi"+category] -> Write();
-  m_plots["h_tanPhi_whenGoodX"+category] -> Write();
-  m_plots["h_tanPhi_whenSameT0"+category] -> Write();
-  m_plots["h_pos"+category] -> Write();
-  m_plots["h_pos_whenSameT0"+category] -> Write();
-} */
+} 
 
 delete file; 
 
