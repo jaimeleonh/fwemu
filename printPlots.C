@@ -31,14 +31,15 @@ void printPlots () {
   std::vector <std::string> plots2D = {"h_numOfHits","h_tanPhi2D","h_pos2D","h_time2D"};
   std::vector <std::string> plotsEff = {"h_EfficiencyVsHits"};
   std::vector <std::string> specialPlots = {"h_BX","h_xDist","h_tanPhiDist","h_timeDist"};
+  std::vector <std::string> generalPlots = {"h_goodEvents", "h_badQ9", "h_badQ9_ArrBXDif", "h_hitDistr","h_Latencies"};
   std::map<std::string, TH1*> m_plots;
   std::map<std::string, TH2*> m_plots2;
   std::map<std::string, TEfficiency*> m_plotsEff;
 
   char name [128];
 
-  if (a == 0) {
-  std::string nameH = "h_goodEvents";
+  for (auto & nameH : generalPlots) {
+//  std::string nameH = "h_goodEvents";
   sprintf(name,"%s",nameH.c_str());
   m_plots[name] = (TH1F*) data1.Get(name);
   m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
@@ -51,19 +52,26 @@ void printPlots () {
   gPad->SaveAs(name);
   }
 
-  if (a==0){
-  std::string nameH = "h_hitDistr";
-  sprintf(name,"%s",nameH.c_str());
-  m_plots[name] = (TH1F*) data1.Get(name);
-  m_plots[name]->Scale (1./ (double) m_plots[name]->GetEntries());
-  m_plots[name]->Draw("histo");
-  outPlots.cd(); 
-  m_plots[name]->Write();
-  sprintf(name,"newPlots/%s.png", nameH.c_str());
-  gPad->SaveAs(name);
-  sprintf(name,"newPlots/%s.pdf", nameH.c_str());
-  gPad->SaveAs(name);
+  std::vector <std::vector <int> > cellLayouts = {{0,-1,-2,-3},{0,-1,-2,-1},{0,-1,0,-1},{0,-1,0,1},{0,1,0,-1},{0,1,0,1},{0,1,2,1},{0,1,2,3}};
+  std::vector <std::string> latPlots = {"lat","bad_lat"};
+ 
+  for (auto & lat : latPlots) {
+    for (auto & layout : cellLayouts) {
+      gStyle->SetOptStat(0);
+      std::string nameHisto = "h_" + lat + "_" + to_string(layout[0])+to_string(layout[1])+to_string(layout[2])+to_string(layout[3]);
+      sprintf(name,"%s",nameHisto.c_str());
+      m_plots2[name] = (TH2F*) data1.Get(name);
+      m_plots2[name]->Draw("colztext");
+	    outPlots.cd(); 
+      m_plots2[name]->Write();
+      sprintf(name,"newPlots/%s.png", nameHisto.c_str());
+      gPad->SaveAs(name);
+      sprintf(name,"newPlots/%s.pdf", nameHisto.c_str());
+      gPad->SaveAs(name);
+      gStyle->SetOptStat(111111);
+    }
   }
+
 
   for (const auto & category : qualityNumbers) {
     for (auto & plot : plotsEff) {
@@ -348,7 +356,7 @@ void printPlots () {
         leg->AddEntry(E7,"Q9","fp");
 
         if (plot == "h_sameFit") E7->GetYaxis()->SetRangeUser(0,1);
-	else E7->GetYaxis()->SetRangeUser(0.0001,30);
+      	else E7->GetYaxis()->SetRangeUser(0.0001,30);
 
 
         E7->Draw("bar");
@@ -357,23 +365,43 @@ void printPlots () {
         E5->Draw("barsame");
         E1->Draw("barsame");
         leg->Draw();
-     
-        double binx = E1->GetBinCenter (1) + E1->GetBinCenter (E1->GetNbinsX()) / 10; 
-        nameFile = "Q9: "+std::to_string(entriesQ9);
-        sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,16,name);
-        nameFile = "Q8: "+std::to_string(entriesQ8);
-        sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,10,name);
-        nameFile = "Q6: "+std::to_string(entriesQ6);
-        sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,6,name);
-        nameFile = "4h: "+std::to_string(entries4h);
-        sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,4,name);
-        nameFile = "3h: "+std::to_string(entries3h);
-        sprintf(name,"%s",nameFile.c_str());
-        latex.DrawLatex(0,2.5,name);
+    
+
+        if (plot == "h_sameFit") {
+          double binx = E1->GetBinCenter (1) + E1->GetBinCenter (E1->GetNbinsX()) / 10; 
+          nameFile = "Q9: "+std::to_string((int)round(E7->GetBinContent(1)*entriesQ9)) + "/"+ std::to_string((int)round(E7->GetBinContent(2)*entriesQ9));
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0.75,0.6,name);
+          nameFile = "Q8: "+std::to_string((int)round(E6->GetBinContent(1)*entriesQ8)) + "/"+ std::to_string((int)round(E6->GetBinContent(2)*entriesQ8));
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0.75,0.55,name);
+          nameFile = "Q6: "+std::to_string((int)round(E5->GetBinContent(1)*entriesQ6)) + "/"+ std::to_string((int)round(E5->GetBinContent(2)*entriesQ6));
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0.75,0.5,name);
+          nameFile = "4h: "+std::to_string((int)round(E3->GetBinContent(1)*entries4h)) + "/"+ std::to_string((int)round(E3->GetBinContent(2)*entries4h));
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0.75,0.45,name);
+          nameFile = "3h: "+std::to_string((int)round(E1->GetBinContent(1)*entries3h)) + "/"+ std::to_string((int)round(E1->GetBinContent(2)*entries3h));
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0.75,0.4,name);
+        } else {
+          double binx = E1->GetBinCenter (1) + E1->GetBinCenter (E1->GetNbinsX()) / 10; 
+          nameFile = "Q9: "+std::to_string(entriesQ9);
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0,16,name);
+          nameFile = "Q8: "+std::to_string(entriesQ8);
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0,10,name);
+          nameFile = "Q6: "+std::to_string(entriesQ6);
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0,6,name);
+          nameFile = "4h: "+std::to_string(entries4h);
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0,4,name);
+          nameFile = "3h: "+std::to_string(entries3h);
+          sprintf(name,"%s",nameFile.c_str());
+          latex.DrawLatex(0,2.5,name);
+        }
 
      if (plot == "h_sameFit") gPad->SetLogy(0);
      else gPad->SetLogy();

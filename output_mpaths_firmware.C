@@ -9,7 +9,8 @@ void output_mpaths_firmware() {
 
 
 
-       ifstream output ("output_mixer_181219.txt");
+       ifstream output ("output_mixer_2303.txt");
+       //ifstream output ("output_mixer_181219.txt");
        TFile *hfile = new TFile("outputMPsfw.root","RECREATE");
 
 
@@ -24,6 +25,8 @@ void output_mpaths_firmware() {
        std::vector<short> m_wheel;
        std::vector<short> m_sector;
        std::vector<short> m_station;
+       std::vector<int> m_arrivalBX;
+       std::vector<int> m_lastHitBX;
        std::vector<std::vector<int>> m_wires;
        std::vector<std::vector<int>> m_tdcs;
        
@@ -31,6 +34,8 @@ void output_mpaths_firmware() {
        m_wheel.clear();
        m_sector.clear();
        m_station.clear();
+       m_arrivalBX.clear();
+       m_lastHitBX.clear();
        m_wires.clear();
        m_tdcs.clear();
 
@@ -43,6 +48,8 @@ void output_mpaths_firmware() {
        m_tree->Branch("Wheel",  &m_wheel);
        m_tree->Branch("Sector",  &m_sector);
        m_tree->Branch("Station",  &m_station);
+       m_tree->Branch("arrivalBX",  &m_arrivalBX);
+       m_tree->Branch("lastHitBX",  &m_lastHitBX);
 
        int wi1, wi2, wi3, wi4, wi5, wi6, wi7, wi8;
        int tdc1, tdc2, tdc3, tdc4, tdc5, tdc6, tdc7, tdc8;
@@ -52,10 +59,12 @@ void output_mpaths_firmware() {
        short wheel;
        short sector;
        short station;
+       int arrivalBX;
+       int lastHitBX;
        
 
        if (output.is_open()){
-         while(output>>wheel>>sector>>station>>superlayer>>wi1>>tdc1>>wi2>>tdc2>>wi3>>tdc3>>wi4>>tdc4) {
+         while(output>>wheel>>sector>>station>>superlayer>>arrivalBX>>lastHitBX>>wi1>>tdc1>>wi2>>tdc2>>wi3>>tdc3>>wi4>>tdc4) {
          //while(!output.eof()){
          //output>>index>>position>>direction>>time>>quality>>wheel>>sector>>station;
          if (wi1 != -1 || wi2 != -1) {
@@ -77,6 +86,8 @@ void output_mpaths_firmware() {
            m_sector.push_back(sector);
            m_station.push_back(station);
            m_superlayer.push_back(superlayer);
+           m_arrivalBX.push_back(arrivalBX);
+           m_lastHitBX.push_back(lastHitBX);
            m_wires.push_back(cells);
            m_tdcs.push_back(tdcs);
 	      } else {
@@ -86,6 +97,8 @@ void output_mpaths_firmware() {
            m_sector.clear();
            m_station.clear();
            m_superlayer.clear();
+           m_arrivalBX.clear();
+           m_lastHitBX.clear();
            m_wires.clear();
            m_tdcs.clear();
 	 }
@@ -99,6 +112,8 @@ void output_mpaths_firmware() {
        m_sector.clear();
        m_station.clear();
        m_superlayer.clear();
+       m_arrivalBX.clear();
+       m_lastHitBX.clear();
        
        hfile->Write(); 
 

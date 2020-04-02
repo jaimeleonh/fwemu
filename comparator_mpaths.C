@@ -47,9 +47,59 @@ const bool verLosMalos = false;
 
 const int numberOfHitsTh = 999999;
 
+/**************************************************************************************
+ * 			              NTUPLAS
+**************************************************************************************/
+// Cargo la ntupla de las primitivas
+TFile *f = new TFile("./outputMPsEmul.root");
+TTree *ntuple = (TTree*)f->Get("ntuple");
+
+UInt_t nTrigsEm = 0;
+std::vector<short> *wheelEm= 0;
+std::vector<short> *sectorEm= 0;
+std::vector<short> *stationEm= 0;
+std::vector<short> *superlayerEm= 0;
+std::vector<std::vector<int>> *wiresEm= 0;
+std::vector<std::vector<int>> *tdcsEm= 0;
+
+// Cargo la ntupla del firmware
+TFile *f1 = new TFile("./outputMPsfw.root");
+TTree *ntuple1 = (TTree*)f1->Get("ntuple");
+
+UInt_t nTrigsFw = 0;
+std::vector<short> *wheelFw= 0;
+std::vector<short> *sectorFw= 0;
+std::vector<short> *stationFw= 0;
+std::vector<short> *superlayerFw= 0;
+std::vector<int> *arrivalBXFw= 0;
+std::vector<int> *lastHitBXFw= 0;
+std::vector<std::vector<int>> *wiresFw= 0;
+std::vector<std::vector<int>> *tdcsFw= 0;
+
+// Cargo la ntupla de los hits 
+TFile *f2 = new TFile("./hits.root");
+TTree *ntuple2 = (TTree*)f2->Get("ntuple");
+
+UInt_t nHits = 0;
+std::vector<int> *hitTdcs=0;
+std::vector<int> *hitLayers=0;
+std::vector<int> *hitCells=0;
+std::vector<short> *hitWheels=0;
+std::vector<short> *hitSectors=0;
+std::vector<short> *hitStations=0;
+std::vector<short> *hitSuperlayers=0;
+
+/***************************************************************************************
+ *                                   MAPS FOR HISTOGRAMS
+ * *************************************************************************************/
+
+std::map<std::string, TH1*> m_plots;
+std::map<std::string, TH2*> m_plots2;
+std::map<std::string, TEfficiency*> m_plotsEff;
+
 /***************************************************************************************
  *
- *			           SUBPROGRAMAS
+ *			                                 SUBPROGRAMAS
  *
  * *************************************************************************************/
 
@@ -59,11 +109,6 @@ int numFromHits (std::vector <int> wires1){
 }
 
 bool sameFit (std::vector <int> wires1, std::vector <int> wires2, std::vector <int> tdcs1, std::vector <int> tdcs2) {
-  //cout << wires1[0] << " " << wires2[0] << "  " << tdcs1[0] << " " << tdcs2[0] << endl;
-  //cout << wires1[1] << " " << wires2[1] << "  " << tdcs1[1] << " " << tdcs2[1] << endl;
-  //cout << wires1[2] << " " << wires2[2] << "  " << tdcs1[2] << " " << tdcs2[2] << endl;
-  //cout << wires1[3] << " " << wires2[3] << "  " << tdcs1[3] << " " << tdcs2[3] << endl << endl;
-
   if ((wires1[0]!=wires2[0] || abs(tdcs1[0]-tdcs2[0])>0)  && !(wires1[0]==-1 && wires2[0] == -1)) return false; 
   if ((wires1[1]!=wires2[1] || abs(tdcs1[1]-tdcs2[1])>0)  && !(wires1[1]==-1 && wires2[1] == -1)) return false; 
   if ((wires1[2]!=wires2[2] || abs(tdcs1[2]-tdcs2[2])>0)  && !(wires1[2]==-1 && wires2[2] == -1)) return false; 
@@ -89,6 +134,11 @@ int qualityGroup (int quality) {
   return -1;  
 }
 
+void fillLatencies () {
+  for (size_t iTrigFw = 0; iTrigFw < nTrigsFw; iTrigFw++){
+    m_plots["h_Latencies"]->Fill(arrivalBXFw->at(iTrigFw) - lastHitBXFw->at(iTrigFw));
+  }
+}
 
 
 
@@ -105,20 +155,6 @@ void comparator_mpaths(){
 
   gStyle->SetOptStat(1111111);
 
-/**************************************************************************************
- * 			              NTUPLAS
-**************************************************************************************/
-// Cargo la ntupla de las primitivas
-TFile *f = new TFile("./outputMPsEmul.root");
-TTree *ntuple = (TTree*)f->Get("ntuple");
-
-UInt_t nTrigsEm = 0;
-std::vector<short> *wheelEm= 0;
-std::vector<short> *sectorEm= 0;
-std::vector<short> *stationEm= 0;
-std::vector<short> *superlayerEm= 0;
-std::vector<std::vector<int>> *wiresEm= 0;
-std::vector<std::vector<int>> *tdcsEm= 0;
 
 ntuple->SetBranchAddress("numberOfMPaths",  &nTrigsEm);
 ntuple->SetBranchAddress("Wheel",&wheelEm);
@@ -128,38 +164,15 @@ ntuple->SetBranchAddress("Superlayer",&superlayerEm);
 ntuple->SetBranchAddress("Cellnumber",&wiresEm);
 ntuple->SetBranchAddress("tdcTime",&tdcsEm);
 
-// Cargo la ntupla del firmware
-TFile *f1 = new TFile("./outputMPsfw.root");
-TTree *ntuple1 = (TTree*)f1->Get("ntuple");
-
-UInt_t nTrigsFw = 0;
-std::vector<short> *wheelFw= 0;
-std::vector<short> *sectorFw= 0;
-std::vector<short> *stationFw= 0;
-std::vector<short> *superlayerFw= 0;
-std::vector<std::vector<int>> *wiresFw= 0;
-std::vector<std::vector<int>> *tdcsFw= 0;
-
 ntuple1->SetBranchAddress("numberOfMPaths",&nTrigsFw);
 ntuple1->SetBranchAddress("Wheel",&wheelFw);
 ntuple1->SetBranchAddress("Sector",&sectorFw);
 ntuple1->SetBranchAddress("Station",&stationFw);
 ntuple1->SetBranchAddress("Superlayer",&superlayerFw);
+ntuple1->SetBranchAddress("arrivalBX",&arrivalBXFw);
+ntuple1->SetBranchAddress("lastHitBX",&lastHitBXFw);
 ntuple1->SetBranchAddress("Cellnumber",&wiresFw);
 ntuple1->SetBranchAddress("tdcTime",&tdcsFw);
-
- // Cargo la ntupla del firmware
-TFile *f2 = new TFile("./hits.root");
-TTree *ntuple2 = (TTree*)f2->Get("ntuple");
-
-UInt_t nHits = 0;
-std::vector<int> *hitTdcs=0;
-std::vector<int> *hitLayers=0;
-std::vector<int> *hitCells=0;
-std::vector<short> *hitWheels=0;
-std::vector<short> *hitSectors=0;
-std::vector<short> *hitStations=0;
-std::vector<short> *hitSuperlayers=0;
 
 ntuple2->SetBranchAddress("numberOfHits",&nHits);
 ntuple2->SetBranchAddress("hitTdc",&hitTdcs);
@@ -185,9 +198,6 @@ cout << "Emulator segments: " << ntuple->GetEntries() << " AB7 outputs " << ntup
  * 				Declaramos histogramas
 **************************************************************************************/
 
-std::map<std::string, TH1*> m_plots;
-std::map<std::string, TH2*> m_plots2;
-std::map<std::string, TEfficiency*> m_plotsEff;
 
 std::vector <std::string> qualityCategories = {"3h", "4h", "All", "All3h"};  
 //LABELS
@@ -200,9 +210,10 @@ for (unsigned int i = 0; i < eventLabels.size(); i++){
   m_plots["h_goodEvents"]->GetXaxis()->SetBinLabel(i+1, eventLabels.at(i).c_str());
 }
 
+m_plots["h_Latencies"] = new TH1F ("h_MixerLatencies","Distribution of mixer latencies; BXs; Entries", 50 , 0, 50);
+
+
 for (auto & category : qualityCategories) {
-
-
   m_plots["h_sameFit"+category] = new TH1F (("h_sameFit" + category).c_str(), "; ; Entries",2 , -0.5, 1.5);
   for (unsigned int i = 0; i < fitLabels.size(); i++){
     m_plots["h_sameFit"+category]->GetXaxis()->SetBinLabel(i+1, fitLabels.at(i).c_str());
@@ -227,6 +238,8 @@ for (Int_t i = 0; i < nEntries; i++){
   ntuple->GetEntry(i);
   ntuple1->GetEntry(i);
   ntuple2->GetEntry(i);
+
+  fillLatencies();
 
   short oldStation=-1, oldWheel=-1, oldSector=-1, oldSuperlayer=-1;
   bool gotSameFit = true;   
@@ -356,28 +369,16 @@ TFile * file = new TFile ("outPlots_mpaths.root", "RECREATE");
 
 m_plots["h_goodEvents"] -> Write();
 m_plotsEff["hMixerEfficiency3hIn4h"] -> Write();
+m_plots["h_Latencies"] -> Write();
+
+
 
 for (auto & category : qualityCategories) {
-
   m_plotsEff["hMixerEfficiencyVsHits"+category] -> Write();
   m_plots["h_sameFit"+category] -> Write();
-}/* 
-for (auto & category : qualityNumbers) {
+}
 
-  m_plots2["h_tanPhi2D"+category] -> Write();
-  m_plots2["h_pos2D"+category] -> Write();
-  m_plots2["h_time2D"+category] -> Write();
-  m_plots["h_time"+category] -> Write();
-  m_plots["h_time_whenGoodX"+category] -> Write();
-  m_plots["h_BX"+category] -> Write();
-  m_plots["h_BXFW"+category] -> Write();
-  m_plots["h_BXEmul"+category] -> Write();
-  m_plots["h_tanPhi"+category] -> Write();
-  m_plots["h_tanPhi_whenGoodX"+category] -> Write();
-  m_plots["h_tanPhi_whenSameT0"+category] -> Write();
-  m_plots["h_pos"+category] -> Write();
-  m_plots["h_pos_whenSameT0"+category] -> Write();
-} */
+
 
 delete file; 
 
